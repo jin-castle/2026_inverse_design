@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.log
+reports/
+crawlers/
+embeddings/
+graph/
+test_*.py
+agent/test_*.py
+agent/debug_*.py
+*.sh
+README.md
+PLAN.md
+TODO*.md

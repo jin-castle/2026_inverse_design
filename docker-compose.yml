@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  meep-kb:
+    build: .
+    ports:
+      - "8765:8765"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      # DB는 볼륨으로 퍼시스턴트 유지
+      - meep_db:/app/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  meep_db:
