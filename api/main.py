@@ -16,14 +16,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # ── 경로 설정 ─────────────────────────────────────────────────────────────────
-BASE = Path("/mnt/c/Users/user/projects/meep-kb")
+BASE = Path(os.environ.get("APP_DIR", "/app"))
 sys.path.insert(0, str(BASE / "agent"))
 sys.path.insert(0, str(BASE / "query"))
-
-os.environ.setdefault(
-    "ANTHROPIC_API_KEY",
-    "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"
-)
 
 DB_PATH    = BASE / "db/knowledge.db"
 CHROMA_DIR = BASE / "db/chroma"

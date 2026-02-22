@@ -6,6 +6,11 @@ __pycache__/
 *.log
 .DS_Store
 
+# 로컬 전용
+install_gh.sh
+start_server.sh
+docker-compose.yml
+
 # 임시/테스트 파일
 test_live*.py
 agent/test_*.py

@@ -22,16 +22,17 @@ COPY graph/    ./graph/
 COPY web/      ./web/
 COPY search_agent.py .
 
-# DB 파일 복사 (빌드 컨텍스트에 포함)
-COPY db/knowledge.db        ./db/knowledge.db
+# DB 파일 복사
+COPY db/knowledge.db           ./db/knowledge.db
 COPY db/knowledge_graph_v2.pkl ./db/knowledge_graph_v2.pkl
-# ChromaDB는 볼륨 마운트 또는 COPY
-COPY db/chroma/             ./db/chroma/
+COPY db/chroma/                ./db/chroma/
 
 # 환경 변수
-ENV PORT=8765
+ENV APP_DIR=/app
+ENV PORT=7860
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8765
+# HuggingFace Spaces 기본 포트
+EXPOSE 7860
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8765"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]
