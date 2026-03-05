@@ -1,0 +1,196 @@
+﻿[
+  {
+    "id": 337,
+    "title": "smartalecH/meep: python/examples/antenna-radiation.py",
+    "code_snippet": "from __future__ import division\n\nimport meep as mp\nimport math\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 50  # pixels/um\n\nsxy = 4\ndpml = 1\ncell = mp.Vector3(sxy+2*dpml,sxy+2*dpml)\n\npml_layers = [mp.PML(dpml)]\n\nfcen = 1.0\ndf = 0.4\nsrc_cmpt = mp.Ez\nsources = [mp.Source(src=mp.Ga",
+    "images": [
+      "/app/db/results/example_337_00.png"
+    ]
+  },
+  {
+    "id": 348,
+    "title": "smartalecH/meep: python/examples/oblique-planewave.py",
+    "code_snippet": "import meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 50 # pixels/關m\n\ncell_size = mp.Vector3(14,10,0)\n\npml_layers = [mp.PML(thickness=2,direction=mp.X)]\n\n# rotation angle (in degrees) of planewave, counter clockwise (CCW) around z-axis\nrot_angle = np.radians(0)\n\nfsrc = 1",
+    "images": [
+      "/app/db/results/example_348_00.png"
+    ]
+  },
+  {
+    "id": 363,
+    "title": "smartalecH/meep: python/examples/bend-flux.py",
+    "code_snippet": "# -*- coding: utf-8 -*-\n\n# transmission around a 90-degree waveguide bend in 2d\nfrom __future__ import division\n\nimport meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 10 # pixels/um\n\nsx = 16  # size of cell in X direction\nsy = 32  # size of cell in Y direction\ncell = mp.",
+    "images": [
+      "/app/db/results/example_363_00.png"
+    ]
+  },
+  {
+    "id": 380,
+    "title": "smartalecH/meep: python/examples/straight-waveguide.py",
+    "code_snippet": "# -*- coding: utf-8 -*-\n\n# From the Meep tutorial: plotting permittivity and fields of a straight waveguide\nfrom __future__ import division\n\nimport meep as mp\n\ncell = mp.Vector3(16,8,0)\n\ngeometry = [mp.Block(mp.Vector3(mp.inf,1,mp.inf),\n                     center=mp.Vector3(),\n                     ",
+    "images": [
+      "/app/db/results/example_380_00.png",
+      "/app/db/results/example_380_01.png",
+      "/app/db/results/example_380_02.png"
+    ]
+  },
+  {
+    "id": 383,
+    "title": "smartalecH/meep: python/examples/gaussian-beam.py",
+    "code_snippet": "## launch a Gaussian beam\n\nimport meep as mp\nimport math\nimport matplotlib\nmatplotlib.use('agg')\nimport matplotlib.pyplot as plt\n\ns = 14\nresolution = 50\ndpml = 2\n\ncell_size = mp.Vector3(s,s)\n\nboundary_layers = [mp.PML(thickness=dpml)]\n\nbeam_x0 = mp.Vector3(0,3.0)    # beam focus (relative to source ",
+    "images": [
+      "/app/db/results/example_383_00.png"
+    ]
+  },
+  {
+    "id": 394,
+    "title": "smartalecH/meep: python/examples/faraday-rotation.py",
+    "code_snippet": "# From the Meep tutorial: plotting Faraday rotation of a linearly polarized plane wave\n\nimport meep as mp\n\n## Parameters for a gyrotropic Lorentzian medium\nepsn  = 1.5    # background permittivity\nf0    = 1.0    # natural frequency\ngamma = 1e-6   # damping rate\nsn    = 0.1    # sigma parameter\nb0   ",
+    "images": [
+      "/app/db/results/example_394_00.png",
+      "/app/db/results/example_394_01.png"
+    ]
+  },
+  {
+    "id": 401,
+    "title": "smartalecH/meep: python/examples/absorbed_power_density.py",
+    "code_snippet": "import numpy as np\nimport matplotlib\nmatplotlib.use('agg')\nimport matplotlib.pyplot as plt\n\nimport meep as mp\nfrom meep.materials import SiO2\n\nresolution = 100  # pixels/um\n\ndpml = 1.0\npml_layers = [mp.PML(thickness=dpml)]\n\nr = 1.0     # radius of cylinder\ndair = 2.0  # air padding thickness\n\ns = 2*",
+    "images": [
+      "/app/db/results/example_401_00.png",
+      "/app/db/results/example_401_01.png"
+    ]
+  },
+  {
+    "id": 402,
+    "title": "smartalecH/meep: python/examples/finite_grating.py",
+    "code_snippet": "import meep as mp\nimport numpy as np\nimport math\nimport matplotlib.pyplot as plt\n\n# True:  plot the scattered fields in the extended air region adjacent to the grating\n# False: plot the diffraction spectra based on a 1d cross section of the scattered fields\nfield_profile = True\n\nresolution = 50     ",
+    "images": [
+      "/app/db/results/example_402_00.png"
+    ]
+  },
+  {
+    "id": 404,
+    "title": "smartalecH/meep: python/examples/refl-quartz.py",
+    "code_snippet": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nfrom meep.materials import fused_quartz\nimport numpy as np\nimport math\nimport matplotlib.pyplot as plt\n\nresolution = 200  # pixels/關m\n\ndpml = 1.0\nsz = 10+2*dpml\ncell_size = mp.Vector3(z=sz)\npml_layers = [mp.PML(dpml)]\n\nwvl_min = 0.4\nwvl_max = 0.8\nfmin = 1/w",
+    "images": [
+      "/app/db/results/example_404_00.png"
+    ]
+  },
+  {
+    "id": 503,
+    "title": "NanoComp/meep: python/examples/binary_grating.py",
+    "code_snippet": "import math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nresolution = 60  # pixels/關m\n\ndpml = 1.0  # PML thickness\ndsub = 3.0  # substrate thickness\ndpad = 3.0  # padding between grating and PML\ngp = 10.0  # grating period\ngh = 0.5  # grating height\ngdc = 0.5  # grating du",
+    "images": [
+      "/app/db/results/example_503_00.png"
+    ]
+  },
+  {
+    "id": 504,
+    "title": "NanoComp/meep: python/examples/cylinder_cross_section.py",
+    "code_snippet": "import matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nr = 0.7  # radius of cylinder\nh = 2.3  # height of cylinder\n\nwvl_min = 2 * np.pi * r / 10\nwvl_max = 2 * np.pi * r / 2\n\nfrq_min = 1 / wvl_max\nfrq_max = 1 / wvl_min\nfrq_cen = 0.5 * (frq_min + frq_max)\ndfrq = frq_max - frq_min\nnfrq ",
+    "images": [
+      "/app/db/results/example_504_00.png"
+    ]
+  },
+  {
+    "id": 508,
+    "title": "NanoComp/meep: python/examples/antenna-radiation.py",
+    "code_snippet": "\"\"\"Radiation pattern of a dipole antenna in free space.\n\nTutorial reference:\n\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Near_to_Far_Field_Spectra/#radiation-pattern-of-an-antenna\n\"\"\"\n\nimport math\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\nRESOLUTION_UM = 50\n",
+    "images": [
+      "/app/db/results/example_508_00.png"
+    ]
+  },
+  {
+    "id": 520,
+    "title": "NanoComp/meep: python/examples/oblique-planewave.py",
+    "code_snippet": "\"\"\"Demonstration of launching a planewave source at oblique incidence.\n\ntutorial reference:\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Eigenmode_Source/#planewaves-in-homogeneous-media\n\"\"\"\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\nmp.verbosity(2)\n\nresolution",
+    "images": [
+      "/app/db/results/example_520_00.png"
+    ]
+  },
+  {
+    "id": 536,
+    "title": "NanoComp/meep: python/examples/3rd-harm-1d.py",
+    "code_snippet": "\"\"\"\n1d simulation of a plane wave propagating through a Kerr medium\nand generating the third-harmonic frequency component.\n\nref: https://meep.readthedocs.io/en/latest/Python_Tutorials/Third_Harmonic_Generation/\n\"\"\"\n\nfrom typing import Tuple, List, Union\nimport numpy as np\nimport matplotlib\n\nmatplotl",
+    "images": [
+      "/app/db/results/example_536_00.png",
+      "/app/db/results/example_536_01.png"
+    ]
+  },
+  {
+    "id": 538,
+    "title": "NanoComp/meep: python/examples/bend-flux.py",
+    "code_snippet": "# transmission around a 90-degree waveguide bend in 2d\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nresolution = 10  # pixels/um\n\nsx = 16  # size of cell in X direction\nsy = 32  # size of cell in Y direction\ncell = mp.Vector3(sx, sy, 0)\n\ndpml = 1.0\npml_layers = [mp.PML(dpml",
+    "images": [
+      "/app/db/results/example_538_00.png"
+    ]
+  },
+  {
+    "id": 546,
+    "title": "NanoComp/meep: python/examples/antenna_pec_ground_plane.py",
+    "code_snippet": "\"\"\"Radiation pattern of a dipole antenna above a ground plane.\n\nTutorial reference:\n\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Near_to_Far_Field_Spectra/#antenna-above-a-perfect-electric-conductor-ground-plane\n\"\"\"\n\nimport math\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport nu",
+    "images": [
+      "/app/db/results/example_546_00.png",
+      "/app/db/results/example_546_01.png"
+    ]
+  },
+  {
+    "id": 551,
+    "title": "NanoComp/meep: python/examples/antenna_pec_ground_plane_1D.py",
+    "code_snippet": "\"\"\"Radiation pattern of a dipole antenna above a ground plane using Brillouin-zone integration.\n\nTutorial reference:\n\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Near_to_Far_Field_Spectra/#antenna-above-a-perfect-electric-conductor-ground-plane\n\"\"\"\n\nimport math\nfrom typing import Tuple\n\ni",
+    "images": [
+      "/app/db/results/example_551_00.png"
+    ]
+  },
+  {
+    "id": 561,
+    "title": "NanoComp/meep: python/examples/straight-waveguide.py",
+    "code_snippet": "# From the Meep tutorial: plotting permittivity and fields of a straight waveguide\nimport meep as mp\n\ncell = mp.Vector3(16, 8, 0)\n\ngeometry = [\n    mp.Block(\n        mp.Vector3(mp.inf, 1, mp.inf),\n        center=mp.Vector3(),\n        material=mp.Medium(epsilon=12),\n    )\n]\n\nsources = [\n    mp.Source",
+    "images": [
+      "/app/db/results/example_561_00.png",
+      "/app/db/results/example_561_01.png",
+      "/app/db/results/example_561_02.png"
+    ]
+  },
+  {
+    "id": 564,
+    "title": "NanoComp/meep: python/examples/gaussian-beam.py",
+    "code_snippet": "## launch a Gaussian beam\nimport math\n\nimport matplotlib\n\nimport meep as mp\n\nmatplotlib.use(\"agg\")\nimport matplotlib.pyplot as plt\n\ns = 14\nresolution = 50\ndpml = 2\n\ncell_size = mp.Vector3(s, s)\n\nboundary_layers = [mp.PML(thickness=dpml)]\n\nbeam_x0 = mp.Vector3(0, 3.0)  # beam focus (relative to sourc",
+    "images": [
+      "/app/db/results/example_564_00.png"
+    ]
+  },
+  {
+    "id": 578,
+    "title": "NanoComp/meep: python/examples/faraday-rotation.py",
+    "code_snippet": "# From the Meep tutorial: plotting Faraday rotation of a linearly polarized plane wave\nimport meep as mp\n\n## Parameters for a gyrotropic Lorentzian medium\nepsn = 1.5  # background permittivity\nf0 = 1.0  # natural frequency\ngamma = 1e-6  # damping rate\nsn = 0.1  # sigma parameter\nb0 = 0.15  # magnitu",
+    "images": [
+      "/app/db/results/example_578_00.png",
+      "/app/db/results/example_578_01.png"
+    ]
+  },
+  {
+    "id": 586,
+    "title": "NanoComp/meep: python/examples/absorbed_power_density.py",
+    "code_snippet": "import matplotlib\nimport numpy as np\n\nmatplotlib.use(\"agg\")\nimport matplotlib.pyplot as plt\nfrom meep.materials import SiO2\n\nimport meep as mp\n\nresolution = 100  # pixels/um\n\ndpml = 1.0\npml_layers = [mp.PML(thickness=dpml)]\n\nr = 1.0  # radius of cylinder\ndair = 2.0  # air padding thickness\n\ns = 2 * ",
+    "images": [
+      "/app/db/results/example_586_00.png",
+      "/app/db/results/example_586_01.png"
+    ]
+  },
+  {
+    "id": 587,
+    "title": "NanoComp/meep: python/examples/finite_grating.py",
+    "code_snippet": "import math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\n# True:  plot the scattered fields in the extended air region adjacent to the grating\n# False: plot the diffraction spectra based on a 1d cross section of the scattered fields\nfield_profile = True\n\nresolution = 50  #",
+    "images": [
+      "/app/db/results/example_587_00.png"
+    ]
+  },
+  {
+    "id": 589,
+    "title": "NanoComp/meep: python/examples/refl-quartz.py",
+    "code_snippet": "import math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\nfrom meep.materials import fused_quartz\n\nimport meep as mp\n\nresolution = 200  # pixels/關m\n\ndpml = 1.0\nsz = 10 + 2 * dpml\ncell_size = mp.Vector3(z=sz)\npml_layers = [mp.PML(dpml)]\n\nwvl_min = 0.4\nwvl_max = 0.8\nfmin = 1 / wvl_max\nfmax = 1 /",
+    "images": [
+      "/app/db/results/example_589_00.png"
+    ]
+  }
+]

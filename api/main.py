@@ -5,14 +5,14 @@ MEEP-KB FastAPI 백엔드 (Hybrid RAG)
 포트: 8765
 """
 
-import sys, os, time, sqlite3, pickle
+import sys, os, time, sqlite3, pickle, json
 from pathlib import Path
 from typing import Optional, List, Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 # ── 경로 설정 ─────────────────────────────────────────────────────────────────
@@ -55,7 +55,10 @@ async def startup():
     try:
         from sentence_transformers import SentenceTransformer
         _cache["model"] = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-        print("[startup] ✅ 모델 로드 완료")
+        print("[startup] ✅ 모델(384) 로드 완료")
+        # examples/errors/docs 컬렉션은 bge-m3 (1024차원) 사용
+        _cache["model_1024"] = SentenceTransformer("BAAI/bge-m3", device="cpu")
+        print("[startup] ✅ 모델(1024/bge-m3) 로드 완료")
     except Exception as e:
         print(f"[startup] ⚠️ 모델 로드 실패: {e}")
 
@@ -84,6 +87,8 @@ async def startup():
         se._client = _cache["chroma"]
         se._graph  = _cache["graph"]
         print("[startup] ✅ search_executor 캐시 주입 완료")
+    except Exception as e:
+        print(f"[startup] ⚠️ search_executor/semantic_search 주입 실패: {e}")
     except Exception as e:
         print(f"[startup] ⚠️ search_executor 주입 실패: {e}")
 
@@ -164,10 +169,14 @@ def _run_search(query: str, n: int = 5) -> dict:
 
     response = {
         "intent": {
-            "type":       intent.get("intent", "unknown"),
-            "lang":       intent.get("lang", "en"),
-            "confidence": round(float(intent.get("confidence", 0)), 2),
-            "keywords":   intent.get("keywords", []),
+            "type":            intent.get("intent", "unknown"),
+            "lang":            intent.get("lang", "en"),
+            "confidence":      round(float(intent.get("confidence", 0)), 2),
+            "keywords":        intent.get("keywords", []),
+            "pipeline_hit":      intent.get("pipeline_hit", False),
+            "pipeline_category": intent.get("pipeline_category", None),
+            "pipeline_stage":    intent.get("pipeline_stage", None),
+            "pipeline_stage_idx": intent.get("pipeline_stage_idx", 0),
         },
         "mode":          mode,
         "results":       clean_results,
@@ -260,7 +269,12 @@ async def status():
     }
 
 
-# ── 정적 파일 서빙 (프론트엔드) ───────────────────────────────────────────────
+# ── 정적 파일 서빙 ────────────────────────────────────────────────────────────
+# 실행 결과 이미지 서빙 (항상)
+RESULTS_DIR = BASE / "db/results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static/results", StaticFiles(directory=str(RESULTS_DIR)), name="results")
+
 WEB_DIR = BASE / "web"
 if WEB_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
@@ -274,6 +288,230 @@ else:
         return {"message": "MEEP-KB API 서버 가동 중", "docs": "/docs"}
 
 
+@app.get("/dict", response_class=HTMLResponse)
+async def pattern_dictionary():
+    """MEEP-KB Pattern Dictionary — readthedocs 스타일 HTML 사전 페이지"""
+    sys.path.insert(0, str(BASE / "api"))
+    from dict_page import generate_html
+    return HTMLResponse(content=generate_html(), status_code=200)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765, reload=False)
+
+
+# ── 시뮬레이션 예제 저장 시스템 ──────────────────────────────────────────────
+
+class IngestExampleRequest(BaseModel):
+    title: str
+    code: str
+    description: str
+    tags: str = ""
+    source_repo: str = "local_notebook"
+    author: str = "jin"
+    file_path: str = ""
+
+
+@app.post("/api/ingest/example")
+async def ingest_example(req: IngestExampleRequest):
+    """Jupyter 노트북 시뮬레이션 예제를 meep-kb에 저장 (SQLite + ChromaDB)"""
+    import uuid, datetime as dt
+
+    # 1. SQLite 저장
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        conn.execute(
+            "INSERT INTO examples (title, code, description, tags, source_repo, author, file_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                req.title[:500],
+                req.code[:10000],
+                req.description[:3000],
+                req.tags[:500],
+                req.source_repo[:200],
+                req.author[:100],
+                req.file_path[:500],
+                dt.datetime.now().isoformat(),
+            )
+        )
+        row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "error": f"SQLite: {e}"}
+
+    # 2. ChromaDB 벡터 저장 (bge-m3 1024차원 사용)
+    chroma_ok = False
+    chroma_err = None
+    try:
+        client = _cache.get("chroma")
+        model  = _cache.get("model_1024") or _cache.get("model")
+        if client and model:
+            col  = client.get_or_create_collection("examples")
+            text = f"TITLE: {req.title}\nTAGS: {req.tags}\nDESC: {req.description}\nCODE:\n{req.code[:2000]}"
+            emb  = model.encode(text).tolist()
+            col.add(
+                ids=[f"example_{row_id}_{uuid.uuid4().hex[:8]}"],
+                embeddings=[emb],
+                documents=[text[:3000]],
+                metadatas=[{
+                    "source":      req.source_repo,
+                    "type":        "example",
+                    "title":       req.title,
+                    "tags":        req.tags,
+                    "author":      req.author,
+                    "created_at":  dt.datetime.now().isoformat(),
+                }],
+            )
+            chroma_ok = True
+    except Exception as e:
+        chroma_err = str(e)
+
+    return {
+        "ok":          True,
+        "sqlite_id":   row_id,
+        "chroma_ok":   chroma_ok,
+        "chroma_error": chroma_err,
+        "message":     f"예제 저장 완료 (id={row_id}, title='{req.title}')",
+    }
+
+
+# ── 시뮬레이션 에러 누적 시스템 ──────────────────────────────────────────────
+
+class IngestErrorRequest(BaseModel):
+    error_msg: str
+    solution: str
+    cause: str = ""
+    category: str = "runtime"
+    code: str = ""
+    stage: str = ""
+    tags: str = ""
+    source_type: str = "simulation_log"
+
+
+@app.post("/api/ingest/error")
+async def ingest_error(req: IngestErrorRequest):
+    """시뮬레이션 에러+해결책을 meep-kb에 저장 (SQLite + ChromaDB)"""
+    import uuid, datetime as dt
+
+    # 1. SQLite 저장
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        cause_text = req.cause + (f" [stage:{req.stage}]" if req.stage else "")
+        conn.execute(
+            "INSERT INTO errors (error_msg, category, cause, solution, source_url, source_type, verified) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            (req.error_msg[:3000], req.category, cause_text[:500], req.solution[:3000], "", req.source_type)
+        )
+        row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "error": f"SQLite: {e}"}
+
+    # 2. ChromaDB 벡터 저장
+    chroma_ok = False
+    chroma_err = None
+    try:
+        client = _cache.get("chroma")
+        model = _cache.get("model")
+        if client and model:
+            col = client.get_or_create_collection("errors")
+            text = f"CODE: {req.code[:500]}\nERROR: {req.error_msg}\nCAUSE: {req.cause}\nSOLUTION: {req.solution}"
+            emb = model.encode(text).tolist()
+            col.add(
+                ids=[f"sim_error_{row_id}_{uuid.uuid4().hex[:8]}"],
+                embeddings=[emb],
+                documents=[text[:2000]],
+                metadatas=[{"source": "simulation_log", "type": "error",
+                            "category": req.category, "stage": req.stage,
+                            "tags": req.tags, "created_at": dt.datetime.now().isoformat()}],
+            )
+            chroma_ok = True
+    except Exception as e:
+        chroma_err = str(e)
+
+    return {"ok": True, "sqlite_id": row_id, "chroma_ok": chroma_ok,
+            "chroma_error": chroma_err,
+            "message": f"저장 완료 (id={row_id}, stage={req.stage or 'unknown'})"}
+
+
+# ── 실행 결과 저장 ─────────────────────────────────────────────────────────────
+
+class IngestResultRequest(BaseModel):
+    example_id: int
+    result_images_b64: List[str] = []   # base64 인코딩 PNG 배열
+    result_stdout: str = ""
+    result_run_time: float = 0.0
+    result_executed_at: str = ""
+    result_status: str = "success"      # success/failed/timeout/skip
+
+
+@app.post("/api/ingest/result")
+async def ingest_result(req: IngestResultRequest):
+    """run_examples.py가 실행한 결과를 DB + 이미지 파일로 저장"""
+    import base64 as b64mod, datetime as dt
+
+    RESULTS_DIR = BASE / "db/results"
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 이미지 저장
+    saved_paths = []
+    for i, b64str in enumerate(req.result_images_b64):
+        img_name = f"example_{req.example_id}_{i:02d}.png"
+        img_path = RESULTS_DIR / img_name
+        try:
+            img_data = b64mod.b64decode(b64str)
+            img_path.write_bytes(img_data)
+            saved_paths.append(str(img_path))
+        except Exception as e:
+            print(f"[ingest_result] 이미지 저장 실패 id={req.example_id} i={i}: {e}")
+
+    executed_at = req.result_executed_at or dt.datetime.now().isoformat()
+
+    # DB 업데이트
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        conn.execute(
+            """UPDATE examples SET
+               result_images=?, result_stdout=?, result_run_time=?,
+               result_executed_at=?, result_status=?
+               WHERE id=?""",
+            (
+                json.dumps(saved_paths),
+                req.result_stdout[:5000],
+                req.result_run_time,
+                executed_at,
+                req.result_status,
+                req.example_id,
+            )
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "error": f"DB: {e}"}
+
+    return {
+        "ok":          True,
+        "example_id":  req.example_id,
+        "images_saved": len(saved_paths),
+        "status":      req.result_status,
+    }
+
+
+# ── 예제 목록 조회 ─────────────────────────────────────────────────────────────
+
+@app.post("/api/examples/list")
+async def examples_list():
+    """run_examples.py 용 예제 목록 반환"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        rows = conn.execute(
+            "SELECT id, title, code, result_status FROM examples ORDER BY id"
+        ).fetchall()
+        conn.close()
+        return [
+            {"id": r[0], "title": r[1] or "", "code": r[2] or "", "result_status": r[3] or "pending"}
+            for r in rows
+        ]
+    except Exception as e:
+        return []

@@ -1,6 +1,8 @@
 /* ── MEEP-KB App ───────────────────────────────────────────────────────── */
 
-const API_BASE = 'http://localhost:8765';
+const API_BASE = window.location.origin === 'null' || window.location.origin === '' 
+  ? 'http://localhost:8765' 
+  : window.location.origin;
 let chatHistory = [];
 let isLoading = false;
 
@@ -33,6 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 자동 높이 조정
   input.addEventListener('input', autoResize);
+
 
   // 예시 버튼 (사이드바)
   document.querySelectorAll('.example-btn').forEach(btn => {
@@ -198,7 +201,7 @@ async function sendQuery() {
     if (data.history) chatHistory = data.history;
 
     removeLoading(loadingId);
-    appendAIMessage(data);
+    appendAIMessage(data, query);
 
   } catch (err) {
     removeLoading(loadingId);
@@ -278,7 +281,7 @@ function removeLoading(id) {
 }
 
 // ── AI 응답 카드 ────────────────────────────────────────────────────────────
-function appendAIMessage(data) {
+function appendAIMessage(data, query_text = '') {
   const msgs = document.getElementById('messages');
   const div  = document.createElement('div');
   div.className = 'msg-ai msg-animate';
@@ -378,12 +381,119 @@ function appendAIMessage(data) {
 
   msgs.appendChild(div);
 
-  // 코드 하이라이팅
+  // 코드 하이라이팅 + 복사버튼 + 클릭시 전체선택
   div.querySelectorAll('pre code').forEach(block => {
     hljs.highlightElement(block);
   });
+  div.querySelectorAll('pre').forEach(pre => {
+    pre.style.position = 'relative';
+    pre.title = '클릭: 전체 선택 | 복사 버튼: 클립보드 복사';
+    // 클릭시 코드 전체 선택
+    pre.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      const range = document.createRange();
+      range.selectNodeContents(pre.querySelector('code') || pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    // 복사 버튼
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '복사';
+    copyBtn.style.cssText = 'position:absolute;top:6px;right:8px;padding:2px 8px;font-size:11px;background:#30363d;color:#8b949e;border:1px solid #444;border-radius:4px;cursor:pointer;z-index:10;opacity:0;transition:opacity 0.15s;';
+    pre.addEventListener('mouseenter', () => copyBtn.style.opacity = '1');
+    pre.addEventListener('mouseleave', () => copyBtn.style.opacity = '0');
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = pre.querySelector('code');
+      navigator.clipboard.writeText(code ? code.innerText : pre.innerText).then(() => {
+        copyBtn.textContent = '✓';
+        copyBtn.style.color = '#3fb950';
+        setTimeout(() => { copyBtn.textContent = '복사'; copyBtn.style.color = '#8b949e'; }, 1500);
+      });
+    });
+    pre.appendChild(copyBtn);
+  });
+
+  // 피드백 UI 추가
+  if (data.results && data.results.length > 0) {
+    appendFeedbackUI(div, data, query_text);
+  }
 
   scrollToBottom();
+}
+
+// ── 피드백 UI ──────────────────────────────────────────────────────────────
+function appendFeedbackUI(parentDiv, data, query) {
+  const answerId = 'ans-' + Date.now();
+  const results  = data.results || [];
+
+  const section = document.createElement('div');
+  section.className = 'feedback-section';
+  section.dataset.answerId = answerId;
+
+  // 버튼 목록 (자료별 + 해결 안됨)
+  const btnHtml = results.slice(0, 5).map((r, i) => `
+    <button class="feedback-btn" data-idx="${i+1}"
+      data-title="${escHtml(r.title || '')}"
+      data-url="${escHtml(r.url || '')}">
+      ${i+1}번 자료
+    </button>
+  `).join('');
+
+  section.innerHTML = `
+    <div class="feedback-label">💡 어떤 방법이 도움이 됐나요?</div>
+    <div class="feedback-btns">
+      ${btnHtml}
+      <button class="feedback-btn feedback-btn-none" data-idx="0"
+        data-title="" data-url="">
+        해결 안됨
+      </button>
+    </div>
+    <div class="feedback-thanks" style="display:none;"></div>
+  `;
+
+  // 버튼 클릭 이벤트
+  section.querySelectorAll('.feedback-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx   = parseInt(btn.dataset.idx);
+      const title = btn.dataset.title;
+      const url   = btn.dataset.url;
+
+      // UI 즉시 반응
+      section.querySelectorAll('.feedback-btn').forEach(b => b.disabled = true);
+      btn.classList.add('feedback-btn-selected');
+
+      const thanks = section.querySelector('.feedback-thanks');
+      thanks.style.display = 'block';
+      thanks.textContent   = idx === 0
+        ? '😅 피드백 감사합니다. 검색 개선에 활용하겠습니다.'
+        : `✅ ${idx}번 자료 피드백 감사합니다! 점수가 올라갑니다 🚀`;
+
+      // 서버에 전송
+      try {
+        await fetch(`${API_BASE}/api/feedback`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            answer_id:    answerId,
+            result_index: idx,
+            result_title: title,
+            result_url:   url,
+            answer_text:  (data.answer || '').slice(0, 2000),
+          }),
+        });
+      } catch (e) {
+        console.warn('피드백 전송 실패:', e);
+      }
+    });
+  });
+
+  // AI 카드 내부 맨 아래에 추가
+  const card = parentDiv.querySelector('.ai-card');
+  if (card) card.appendChild(section);
+  else parentDiv.appendChild(section);
 }
 
 // ── 결과 카드 ──────────────────────────────────────────────────────────────
@@ -397,7 +507,7 @@ function buildResultCard(r, rank) {
   let bodyHtml = '';
   if (r.type === 'ERROR') {
     if (r.cause)    bodyHtml += `<div class="result-field"><span class="result-field-label">원인</span><span class="result-field-val">${escHtml(r.cause.slice(0, 220))}</span></div>`;
-    if (r.solution) bodyHtml += `<div class="result-field"><span class="result-field-label">✅ 해결</span><span class="result-field-val">${escHtml(r.solution.slice(0, 260))}</span></div>`;
+    if (r.solution) bodyHtml += `<div class="result-field"><span class="result-field-label">해결</span><span class="result-field-val">${escHtml(r.solution.slice(0, 260))}</span></div>`;
   } else if (r.type === 'EXAMPLE') {
     if (r.code) {
       const snippet = escHtml(r.code.slice(0, 300).trim());
@@ -405,6 +515,13 @@ function buildResultCard(r, rank) {
     }
   } else if (r.type === 'DOC') {
     if (r.cause) bodyHtml += `<div class="result-field"><span class="result-field-val">${escHtml(r.cause.slice(0, 220))}</span></div>`;
+  } else if (r.type === 'PATTERN') {
+    if (r.cause) bodyHtml += `<div class="result-field"><span class="result-field-label">설명</span><span class="result-field-val">${escHtml(r.cause.slice(0, 300))}</span></div>`;
+    if (r.category) bodyHtml += `<div class="result-field"><span class="result-field-label">용도</span><span class="result-field-val">${escHtml(r.category.slice(0, 200))}</span></div>`;
+    if (r.code) {
+      const snippet = escHtml(r.code.slice(0, 400).trim());
+      bodyHtml += `<pre><code class="language-python">${snippet}</code></pre>`;
+    }
   }
 
   const link = r.url
@@ -494,7 +611,7 @@ function buildIntentBadge(intent) {
 
 // ── 유틸 ───────────────────────────────────────────────────────────────────
 function typeIconChar(type) {
-  return { ERROR: '🔴', EXAMPLE: '🟢', DOC: '📄' }[type] || '•';
+  return { ERROR: '🔴', EXAMPLE: '🟢', DOC: '📄', PATTERN: '🔷' }[type] || '•';
 }
 
 function methodIcon(m) {
@@ -517,4 +634,210 @@ function escHtml(str) {
 function scrollToBottom() {
   const msgs = document.getElementById('messages');
   requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
+}
+
+/* ── 탭 전환 ────────────────────────────────────────────────────────────── */
+function switchTab(tab) {
+  document.getElementById('panel-chat').style.display     = tab === 'chat'     ? '' : 'none';
+  document.getElementById('panel-diagnose').style.display = tab === 'diagnose' ? '' : 'none';
+  document.getElementById('tab-chat').classList.toggle('active',     tab === 'chat');
+  document.getElementById('tab-diagnose').classList.toggle('active', tab === 'diagnose');
+}
+
+/* ── 코드 진단 ──────────────────────────────────────────────────────────── */
+const DIAG_EXAMPLES = {
+  adjoint: {
+    code: `import meep as mp
+import meep.adjoint as mpa
+import autograd.numpy as npa
+
+opt = mpa.OptimizationProblem(
+    simulation=sim,
+    objective_functions=[J],
+    objective_arguments=[monitor],
+    design_regions=[design_region],
+)
+x0 = np.ones((Nx, Ny)) * 0.5
+opt.update_design([x0])
+f, dJ_deps = opt(x0, need_gradient=True)`,
+    error: `Traceback (most recent call last):
+  File "adjoint_test.py", line 31, in <module>
+    f, dJ_deps = opt(x0, need_gradient=True)
+  File "/opt/conda/lib/python3.10/site-packages/meep/adjoint/optimization_problem.py", line 552, in __call__
+    self.reset_meep()
+RuntimeError: changed_materials: cannot add new materials to a simulation after it has been run`
+  },
+  diverge: {
+    code: `import meep as mp
+
+cell = mp.Vector3(10, 10, 0)
+pml_layers = [mp.PML(1.0)]
+sources = [mp.Source(src=mp.GaussianSource(frequency=1.0, fwidth=0.5),
+                     component=mp.Ez, center=mp.Vector3(-3, 0, 0))]
+sim = mp.Simulation(cell_size=cell, boundary_layers=pml_layers,
+                    sources=sources, resolution=20)
+sim.run(until=500)`,
+    error: `meep: field decay is NaN; the simulation is probably diverging.
+If this is unexpected, decreasing the time step (e.g. by increasing the resolution) may help.
+Simulation diverged at t=42.5 after 850 time steps.`
+  },
+  eigenmode: {
+    code: `import meep as mp
+
+sources = [mp.EigenModeSource(
+    src=mp.GaussianSource(1/1.55, fwidth=0.2),
+    center=mp.Vector3(-3, 0),
+    size=mp.Vector3(0, 2),
+    eig_band=1,
+    eig_parity=mp.EVEN_Y+mp.ODD_Z,
+    eig_kpoint=mp.Vector3(1, 0, 0)
+)]
+sim = mp.Simulation(cell_size=mp.Vector3(10, 4, 0),
+                    geometry=[...], sources=sources, resolution=30)
+sim.run(until=100)`,
+    error: `meep: The eigenmode solver could not find a mode.
+AttributeError: 'NoneType' object has no attribute 'group_velocity'
+  at EigenModeSource initialization`
+  }
+};
+
+function fillDiagExample(key) {
+  const ex = DIAG_EXAMPLES[key];
+  if (!ex) return;
+  document.getElementById('diag-code').value  = ex.code;
+  document.getElementById('diag-error').value = ex.error;
+  document.getElementById('diag-result').style.display = 'none';
+}
+
+function clearDiagnose() {
+  document.getElementById('diag-code').value  = '';
+  document.getElementById('diag-error').value = '';
+  document.getElementById('diag-result').style.display = 'none';
+}
+
+async function runDiagnose() {
+  const code  = document.getElementById('diag-code').value.trim();
+  const error = document.getElementById('diag-error').value.trim();
+  if (!code && !error) {
+    alert('코드 또는 에러 메시지를 입력하세요.');
+    return;
+  }
+
+  const btn = document.getElementById('diag-submit');
+  btn.disabled = true;
+  btn.textContent = '🔍 분석 중...';
+
+  const resultDiv = document.getElementById('diag-result');
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = `<div class="diag-loading">⏳ meep-kb DB 검색 중...</div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/diagnose`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, error, n: 5 }),
+    });
+    const data = await res.json();
+    renderDiagnoseResult(data);
+  } catch (e) {
+    resultDiv.innerHTML = `<div class="diag-error-msg">❌ 요청 실패: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 진단 시작';
+  }
+}
+
+function renderDiagnoseResult(data) {
+  const resultDiv = document.getElementById('diag-result');
+  const info = data.error_info || {};
+  const suggestions = data.suggestions || [];
+  const mode = data.mode || 'unknown';
+  const dbSufficient = data.db_sufficient;
+  const topScore = data.top_score || 0;
+
+  // 모드 배지
+  const modeBadge = dbSufficient
+    ? `<span class="diag-mode-badge diag-mode-db">🗄️ DB 기반 답변 (신뢰도 ${Math.round(topScore*100)}%)</span>`
+    : `<span class="diag-mode-badge diag-mode-llm">🤖 DB+LLM 혼합 (DB 매칭 부족)</span>`;
+
+  // 에러 타입 배지
+  const types = (info.detected_types || []).map(t =>
+    `<span class="diag-type-badge">${t.type}: ${t.description}</span>`
+  ).join(' ');
+
+  // 수정 제안 카드들
+  let suggHtml = '';
+  if (suggestions.length > 0) {
+    suggestions.forEach((s, i) => {
+      const scoreBar = Math.round((s.score || 0) * 100);
+      const srcIcon  = s.source === 'kb_vector' ? '🔍' : s.source === 'kb_sqlite' ? '🗄️' : '📄';
+      suggHtml += `
+        <div class="diag-card">
+          <div class="diag-card-header">
+            <span class="diag-card-num">#${i+1}</span>
+            <span class="diag-card-title">${s.title || '관련 항목'}</span>
+            <span class="diag-card-score">${srcIcon} ${scoreBar}%</span>
+          </div>
+          ${s.cause    ? `<div class="diag-section"><div class="diag-section-label">🔴 원인</div><div class="diag-section-body">${s.cause}</div></div>` : ''}
+          ${s.solution ? `<div class="diag-section"><div class="diag-section-label">✅ 해결 방법</div><div class="diag-section-body">${s.solution}</div></div>` : ''}
+          ${s.code     ? `<div class="diag-section"><div class="diag-section-label">🐍 수정 코드</div><pre class="diag-code-block"><code class="language-python">${escHtml(s.code)}</code></pre></div>` : ''}
+          ${s.url      ? `<div class="diag-section"><a class="diag-url" href="${s.url}" target="_blank">📖 참고 문서 →</a></div>` : ''}
+        </div>`;
+    });
+  } else {
+    suggHtml = `<div class="diag-no-result">DB에서 관련 항목을 찾지 못했습니다.</div>`;
+  }
+
+  // LLM 결과
+  let llmHtml = '';
+  if (data.llm_result && data.llm_result.available && data.llm_result.answer) {
+    llmHtml = `
+      <div class="diag-llm-section">
+        <div class="diag-llm-header">🤖 LLM 보조 분석 (DB 매칭 부족 시 참고용)</div>
+        <div class="diag-llm-body">${marked.parse(data.llm_result.answer)}</div>
+      </div>`;
+  }
+
+  resultDiv.innerHTML = `
+    <div class="diag-result-header">
+      ${modeBadge}
+      <div class="diag-detected-types">${types}</div>
+      ${info.last_error_line ? `<div class="diag-last-err">핵심 에러: <code>${escHtml(info.last_error_line)}</code></div>` : ''}
+    </div>
+    <div class="diag-suggestions">${suggHtml}</div>
+    ${llmHtml}
+  `;
+
+  resultDiv.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+  resultDiv.querySelectorAll('pre').forEach(pre => {
+    pre.style.position = 'relative';
+    pre.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      const range = document.createRange();
+      range.selectNodeContents(pre.querySelector('code') || pre);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    });
+    const cb = document.createElement('button');
+    cb.textContent = '복사';
+    cb.style.cssText = 'position:absolute;top:6px;right:8px;padding:2px 8px;font-size:11px;background:#30363d;color:#8b949e;border:1px solid #444;border-radius:4px;cursor:pointer;z-index:10;opacity:0;transition:opacity 0.15s;';
+    pre.addEventListener('mouseenter', () => cb.style.opacity = '1');
+    pre.addEventListener('mouseleave', () => cb.style.opacity = '0');
+    cb.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = pre.querySelector('code');
+      navigator.clipboard.writeText(code ? code.innerText : pre.innerText).then(() => {
+        cb.textContent = '✓'; cb.style.color = '#3fb950';
+        setTimeout(() => { cb.textContent = '복사'; cb.style.color = '#8b949e'; }, 1500);
+      });
+    });
+    pre.appendChild(cb);
+  });
+}
+
+function escHtml(str) {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

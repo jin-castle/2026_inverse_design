@@ -18,7 +18,6 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 COPY agent/    ./agent/
 COPY api/      ./api/
 COPY query/    ./query/
-COPY graph/    ./graph/
 COPY web/      ./web/
 COPY search_agent.py .
 

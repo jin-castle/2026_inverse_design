@@ -1,0 +1,53 @@
+﻿============================================================
+1. ?쒓뎅???붿〈 泥댄겕
+============================================================
+[OK] ?쒓뎅???붿〈 ?놁쓬 - ?꾩껜 116媛?紐⑤몢 ?곸뼱
+
+============================================================
+2. 鍮??꾨뱶 泥댄겕
+============================================================
+  description ?놁쓬: 0媛???[]
+  use_case ?놁쓬:    0媛???[]
+
+============================================================
+3. 踰덉뿭 ????鍮꾧탳 (?쒕뜡 5媛?
+============================================================
+
+[id=70] polarization_grating
+  BEFORE desc: ?멸킅 寃⑹옄 ?쒕??덉씠?? Jones matrix, ?멸킅 ?섏〈 ?ш낵?? circular polarization
+  AFTER  desc: Polarization grating simulation: Jones matrix, polarization-dependent transmitta
+  BEFORE use : ?멸킅 誘쇨컧 ?뚯옄 ?쒕??덉씠?? Ex/Ey 遺꾨━ ?뚯뒪, ?멸킅 遺꾩꽍
+  AFTER  use : Polarization-sensitive device simulation. Ex/Ey separated source, polarization a
+
+[id=45] adjoint_filter_source
+  BEFORE desc: Adjoint filter source: FilteredSource, TopOptimizationProblem, design 蹂???꾪꽣留?
+  AFTER  desc: Adjoint filter source: FilteredSource, TopOptimizationProblem, design variable f
+  BEFORE use : adjoint 理쒖쟻?붿뿉??filtered design variable. FilteredSource ?⑦꽩
+  AFTER  use : filtered design variable in adjoint optimization. FilteredSource pattern
+
+[id=1] plot_initial_layout
+  BEFORE desc: 珥덇린 ?덉씠?꾩썐 ?쒓컖?? source/monitor/design region ?꾩튂瑜?annotated plot?쇰줈 ???
+  AFTER  desc: Initial layout visualization: Save source/monitor/design region locations as ann
+  BEFORE use : adjoint optimization ?쒖옉 ???쒕??덉씠???덉씠?꾩썐 ?뺤씤
+  AFTER  use : Verify simulation layout before starting adjoint optimization
+
+[id=103] history_json_format
+  BEFORE desc: Standard history dictionary format for adjoint optimization logging. Tracks: fom
+  AFTER  desc: Standard history dictionary format for adjoint optimization logging. Tracks: fom
+  BEFORE use : history json adjoint optimization, history.json format MEEP, optimization histor
+  AFTER  use : history json adjoint optimization, history.json format MEEP, optimization histor
+
+[id=55] binary_grating_nanocomp
+  BEFORE desc: NanoComp MEEP ?댁쭊 寃⑹옄: 理쒖떊 API, FluxRegion, k_point, ?ш낵 ?⑥쑉 怨꾩궛
+  AFTER  desc: NanoComp MEEP binary grating: latest API, FluxRegion, k_point, transmittance eff
+  BEFORE use : 理쒖떊 MEEP API濡??뚯젅 寃⑹옄 ?쒕??덉씠?? 二쇨린??寃쎄퀎 + k-point ?ㅼ젙
+  AFTER  use : Diffraction grating simulation with latest MEEP API. Periodic boundaries + k-poi
+
+============================================================
+4. 理쒖쥌 ?붿빟
+============================================================
+  ?꾩껜 ?⑦꽩: 116媛?
+  蹂寃쎈맂 ?⑦꽩: 116媛?
+  ?쒓뎅???붿〈: 0媛?
+  鍮?description: 0媛?
+  鍮?use_case: 0媛?

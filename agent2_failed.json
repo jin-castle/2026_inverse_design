@@ -1,0 +1,534 @@
+﻿[
+  {
+    "id": 269,
+    "title": "smartalecH/meep: python/visualization.py",
+    "code": "# -*- coding: utf-8 -*-\nfrom collections import namedtuple\nimport warnings\n\nimport numpy as np\n\nimport meep as mp\nfrom meep.geom import Vector3, init_do_averaging\nfrom meep.source import EigenModeSource, check_positive\n\n\n# ------------------------------------------------------- #\n# Visualization\n# ------------------------------------------------------- #\n# Contains all necesarry visualation routines for use with\n# pymeep and pympb.\n\n# ------------------------------------------------------- #\n# Functions used to define the default plotting parameters\n# for the different plotting routines.\n\ndefa",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/app/run_examples.py\", line 78, in run_code\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex269>\", line 236\n    ax = place_label(ax,label,center.y,center.z,sim_center.y,sim_cente\n                    ^\nSyntaxError: '(' was never closed\n",
+    "status": "failed"
+  },
+  {
+    "id": 329,
+    "title": "smartalecH/meep: python/examples/ring_gds.py",
+    "code": "import numpy as np\nimport gdspy\nfrom matplotlib import pyplot as plt\nimport importlib\nimport meep as mp\n\n# core and cladding materials\nSi   = mp.Medium(index=3.4)\nSiO2 = mp.Medium(index=1.4)\n\n# layer numbers for GDS file\nRING_LAYER       = 0\nSOURCE0_LAYER    = 1\nSOURCE1_LAYER    = 2\nMONITOR_LAYER    = 3\nSIMULATION_LAYER = 4\n\nresolution = 50         # pixels/關m\ndpml       = 1          # thickness of PML\nzmin       = 0          # minimum z value of simulation domain (0 for 2D)\nzmax       = 0          # maximum z value of simulation domain (0 for 2D)\n\ndef create_ring_gds(radius,width):\n    # Relo",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/app/run_examples.py\", line 78, in run_code\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex329>\", line 2, in <module>\nModuleNotFoundError: No module named 'gdspy'\n",
+    "status": "failed"
+  },
+  {
+    "id": 332,
+    "title": "smartalecH/meep: python/examples/mie_scattering.py",
+    "code": "import meep as mp\r\nimport numpy as np\r\nimport matplotlib.pyplot as plt\r\nimport PyMieScatt as ps\r\n\r\nr = 1.0  # radius of sphere\r\n\r\nwvl_min = 2*np.pi*r/10\r\nwvl_max = 2*np.pi*r/2\r\n\r\nfrq_min = 1/wvl_max\r\nfrq_max = 1/wvl_min\r\nfrq_cen = 0.5*(frq_min+frq_max)\r\ndfrq = frq_max-frq_min\r\nnfrq = 100\r\n\r\n## at least 8 pixels per smallest wavelength, i.e. np.floor(8/wvl_min)\r\nresolution = 25\r\n\r\ndpml = 0.5*wvl_max\r\ndair = 0.5*wvl_max\r\n\r\npml_layers = [mp.PML(thickness=dpml)]\r\n\r\nsymmetries = [mp.Mirror(mp.Y),\r\n              mp.Mirror(mp.Z,phase=-1)]\r\n\r\ns = 2*(dpml+dair+r)\r\ncell_size = mp.Vector3(s,s,s)\r\n\r\n# is_",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/app/run_examples.py\", line 78, in run_code\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex332>\", line 4, in <module>\nModuleNotFoundError: No module named 'PyMieScatt'\n",
+    "status": "failed"
+  },
+  {
+    "id": 333,
+    "title": "smartalecH/meep: python/examples/binary_grating.py",
+    "code": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nimport math\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 60        # pixels/關m\n\ndpml = 1.0             # PML thickness\ndsub = 3.0             # substrate thickness\ndpad = 3.0             # padding between grating and PML\ngp = 10.0              # grating period\ngh = 0.5               # grating height\ngdc = 0.5              # grating duty cycle\n\nsx = dpml+dsub+gh+dpad+dpml\nsy = gp\n\ncell_size = mp.Vector3(sx,sy,0)\npml_layers = [mp.PML(thickness=dpml,direction=mp.X)]\n\nwvl_min = 0.4           # min wavelength\nwvl_max = 0.6           # m",
+    "error": "-----------\nInitializing structure...\nHalving computational cell along direction y\ntime for choose_chunkdivision = 5.4121e-05 s\nWorking in 2D dimensions.\nComputational cell is 8.5 x 10 x 0 with resolution 60\ntime for set_epsilon = 0.078362 s\n-----------\nfield decay(t = 50.00833333333333): 0.11392641853211972 / 0.11392641853211972 = 1.0\nfield decay(t = 100.01666666666667): 1.0115785016738984e-15 / ",
+    "status": "failed"
+  },
+  {
+    "id": 336,
+    "title": "smartalecH/meep: python/examples/binary_grating_oblique.ipynb",
+    "code": "# [MD]\n# Reflectance and Transmittance Spectra for Planewave at Oblique Incidence\n\n# [MD]\nAs an additional demonstration of the mode-decomposition feature, the reflectance and transmittance of all diffracted orders for any grating with no material absorption and a planewave source incident at any arbitrary angle and wavelength must necessarily sum to unity. Also, the total reflectance and transmittance must be equivalent to values computed using the Poynting flux. This demonstration is somewhat similar to the [single-mode waveguide example](https://nbviewer.jupyter.org/github/NanoComp/meep/blo",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex336>\", line 11\n    Results are computed for a single wavelength of 0.5 關m. The pulsed planewave is incident at an angle of 10.7째. Its spatial profile is defined using the source amplitude function `pw_amp`. This [anonymous func",
+    "status": "failed"
+  },
+  {
+    "id": 339,
+    "title": "smartalecH/meep: python/examples/ring.ipynb",
+    "code": "# [MD]\n# Modes of a Ring Resonator\n\n# [MD]\nAs described in Introduction, another common task for FDTD simulation is to find the resonant modes ??frequencies and decay rates ??of some cavity structure. You might want to read that again to recall the basic simulation strategy. We will show how this works for a ring resonator, which is simply a waveguide bent into a circle. This script can be also found in examples/ring.py; the notebook is examples/ring.ipynb. In fact, since this structure has cylindrical symmetry, we can simulate it much more efficiently by using cylindrical coordinates, but for",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex339>\", line 5\n    As described in Introduction, another common task for FDTD simulation is to find the resonant modes ??frequencies and decay rates ??of some cavity structure. You might want to read that again to recall the bas",
+    "status": "failed"
+  },
+  {
+    "id": 340,
+    "title": "smartalecH/meep: python/examples/mode-decomposition.ipynb",
+    "code": "# [MD]\n## Reflectance of a Waveguide Taper\n\nThis example involves computing the reflectance of the fundamental mode of a linear waveguide taper. The structure and the simulation parameters are shown in the schematic below. We will verify that computing the reflectance, the fraction of the incident power which is reflected, using two different methods produces nearly identical results: (1) mode decomposition and (2) [Poynting flux](https://meep.readthedocs.io/en/latest/Introduction/#transmittancereflectance-spectra). Also, we will demonstrate that the scaling of the reflectance with the taper l",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex340>\", line 4\n    This example involves computing the reflectance of the fundamental mode of a linear waveguide taper. The structure and the simulation parameters are shown in the schematic below. We will verify that computing ",
+    "status": "failed"
+  },
+  {
+    "id": 342,
+    "title": "smartalecH/meep: python/examples/zone_plate.ipynb",
+    "code": "# [MD]\n# Focusing Properties of a Binary-Phase Zone Plate\n\nIt is also possible to compute a [near-to-far field transformation](https://meep.readthedocs.io/en/latest/Python_User_Interface/#near-to-far-field-spectra) in cylindrical coordinates. This is demonstrated in this example for a binary-phase [zone plate](https://en.wikipedia.org/wiki/Zone_plate) which is a rotationally-symmetric diffractive lens used to focus a normally-incident planewave to a single spot.\n\nUsing [scalar theory](http://zoneplate.lbl.gov/theory), the radius of the $n$<sup>th</sup> zone can be computed as:\n\n<center>\n$$ r_n",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex342>\", line 4\n    It is also possible to compute a [near-to-far field transformation](https://meep.readthedocs.io/en/latest/Python_User_Interface/#near-to-far-field-spectra) in cylindrical coordinates. This is demonstrated in t",
+    "status": "failed"
+  },
+  {
+    "id": 349,
+    "title": "smartalecH/meep: python/examples/absorbed_power_density.ipynb",
+    "code": "# [MD]\n# Absorbed Power Density Map of a Lossy Cylinder\n\nThe `dft_flux` routines (`add_flux`) described in the previous examples compute the *total* power in a given region (`FluxRegion`). It is also possible to compute the *local* (i.e., position-dependent) absorbed power density in a dispersive (lossy) material. This quantity is useful for obtaining a spatial map of the photon absorption. The absorbed power density is defined as $$\\mathrm{Re}\\, \\left[ {\\mathbf{E}^* \\cdot \\frac{d\\mathbf{P}}{dt}} \\right]$$ where $\\mathbf{P}$ is the total polarization field. In the Fourier (frequency) domain wi",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex349>\", line 4\n    The `dft_flux` routines (`add_flux`) described in the previous examples compute the *total* power in a given region (`FluxRegion`). It is also possible to compute the *local* (i.e., position-dependent) absorbe",
+    "status": "failed"
+  },
+  {
+    "id": 352,
+    "title": "smartalecH/meep: python/examples/refl-quartz.ipynb",
+    "code": "# [MD]\n## Reflectance Spectrum of Air-Silica Interface\n\nWe will compute the broadband [reflectance](https://en.wikipedia.org/wiki/Reflectance) spectrum at normal incidence for a planar interface of vacuum/air and [fused quartz](https://en.wikipedia.org/wiki/Fused_quartz). As a validation, we will compare the simulated result with the analytic reflectance computed using the [Fresnel equations](https://en.wikipedia.org/wiki/Fresnel_equations). This is similar to an example in [Tutorial/Basics/Angular Reflectance Spectrum of a Planar Interface](https://meep.readthedocs.io/en/latest/Python_Tutoria",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex352>\", line 6\n    The wavelength-dependent, lossless permittivity of fused quartz, measured experimentally at 20째C, can be approximated by the [Sellmeier equation](https://en.wikipedia.org/wiki/Sellmeier_equation):\n            ",
+    "status": "failed"
+  },
+  {
+    "id": 358,
+    "title": "smartalecH/meep: python/examples/straight-waveguide.ipynb",
+    "code": "# [MD]\n# A straight waveguide\nFor our first example, let's examine the field pattern excited by a localized continuous wave (CW) source in a waveguide ??first straight, then bent. The waveguide will have frequency-independent $\\epsilon$=12 and width 1 $\\mu$m. The unit length in this example is 1 $\\mu$m. See also Units.\n\nThe first thing to do always is to load the Meep library, along with any other library we may need for post processing or visualization:\n\n# [CODE]\nimport meep as mp\n\n# [MD]\n## Simulation Domain\n\nWe can begin specifying each of the simulation objects starting with the computatio",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex358>\", line 3\n    For our first example, let's examine the field pattern excited by a localized continuous wave (CW) source in a waveguide ??first straight, then bent. The waveguide will have frequency-independent $\\epsilon$=12",
+    "status": "failed"
+  },
+  {
+    "id": 362,
+    "title": "smartalecH/meep: python/examples/cylinder_cross_section.ipynb",
+    "code": "# [MD]\n# Scattering Cross Section of a Finite Dielectric Cylinder\n\nAs an alternative to the \"ring\" sources of the previous examples, it is also possible to launch planewaves in cylindrical coordinates. This is demonstrated in this example which involves computing the scattering cross section of a finite-height dielectric cylinder. The results for the 2d simulation involving the cylindrical $(r,z)$ cell are validated by comparing to the same simulation in 3d Cartesian coordinates which tends to be much slower and less accurate at the same grid resolution.\n\nThe calculation of the scattering cros",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex362>\", line 4\n    As an alternative to the \"ring\" sources of the previous examples, it is also possible to launch planewaves in cylindrical coordinates. This is demonstrated in this example which involves computing the scatteri",
+    "status": "failed"
+  },
+  {
+    "id": 364,
+    "title": "smartalecH/meep: python/examples/mpb_data_analysis.py",
+    "code": "from __future__ import division\n\nimport os\nimport sys\nimport numpy as np\nimport meep as mp\nimport matplotlib.pyplot as plt\nfrom meep import mpb\n\nexamples_dir = os.path.realpath(os.path.dirname(__file__))\nsys.path.insert(0, examples_dir)\n\n\ndef tri_rods():\n    # Import the ModeSolver defined in the mpb_tri_rods.py example\n    from mpb_tri_rods import ms as tr_ms\n\n    efields = []\n\n    # Band function to collect the efields\n    def get_efields(tr_ms, band):\n        efields.append(tr_ms.get_efield(band))\n\n    tr_ms.run_tm(mpb.output_at_kpoint(mp.Vector3(1 / -3, 1 / 3), mpb.fix_efield_phase,\n      ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex364>\", line 10, in <module>\nNameError: name '__file__' is not defined\n",
+    "status": "failed"
+  },
+  {
+    "id": 368,
+    "title": "smartalecH/meep: python/examples/mie_scattering.ipynb",
+    "code": "# [MD]\n# Mie Scattering of a Lossless Dielectric Sphere\n\nA common reference calculation in computational electromagnetics for which an analytical solution is known is [Mie scattering](https://en.wikipedia.org/wiki/Mie_scattering) which involves computing the [scattering efficiency](http://www.thermopedia.com/content/956/) of a single, homogeneous sphere given an incident planewave. The scattered power of any object (absorbing or non) can be computed by surrounding it with a *closed* [DFT flux](https://meep.readthedocs.io/en/latest/Python_User_Interface/#flux-spectra) box (its size and orientat",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex368>\", line 6\n    The scattering cross section is the scattered power in all directions divided by the incident intensity. The scattering efficiency, a dimensionless quantity, is the ratio of the scattering cross section to the",
+    "status": "failed"
+  },
+  {
+    "id": 382,
+    "title": "smartalecH/meep: python/examples/solve-cw.py",
+    "code": "import meep as mp\nimport numpy as np\nfrom numpy import linalg as LA\nimport matplotlib.pyplot as plt\n\nn = 3.4\nw = 1\nr = 1\npad = 4\ndpml = 2\n\nsxy = 2*(r+w+pad+dpml)\ncell_size = mp.Vector3(sxy,sxy)\n\npml_layers = [mp.PML(dpml)]\n\nnonpml_vol = mp.Volume(mp.Vector3(), size=mp.Vector3(sxy-2*dpml,sxy-2*dpml))\n\ngeometry = [mp.Cylinder(radius=r+w, material=mp.Medium(index=n)),\n            mp.Cylinder(radius=r)]\n\nfcen = 0.118\n\nsrc = [mp.Source(mp.ContinuousSource(fcen),\n                 component=mp.Ez,\n                 center=mp.Vector3(r+0.1)),\n       mp.Source(mp.ContinuousSource(fcen),\n                ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex382>\", line 45, in <module>\n  File \"/opt/conda/envs/mp/lib/python3.10/site-packages/numpy/__init__.py\", line 400, in __getattr__\n    raise AttributeError(\nAttributeError: `np.complex_` was removed in the NumPy 2.0 release. Use ",
+    "status": "failed"
+  },
+  {
+    "id": 386,
+    "title": "smartalecH/meep: python/examples/holey-wvg-bands.ipynb",
+    "code": "# [MD]\n# Band Diagram\n\nIn this tutorial, we will build off of the `holey-wvg-cavity.ipynb` tutorial by considering a smaller, more abstract calculation that we really should have done first. In particular, we compute the band diagram of the infinite periodic waveguide by itself with no defects. This is very similar to the types of calculations that MPB performs, but with a different method that has its own strengths and weaknesses. By analyzing what solutions can propagate in the periodic structure, one gains fundamental insight into the aperiodic structures from `holey-wvg-cavity.ipynb`.\n\nLet",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex386>\", line 6\n    Let us briefly review the problem. In a periodic system of this sort, the eigen-solutions can be expressed in the form of Bloch modes: a periodic Bloch envelope multiplied by a planewave $exp[i(k?꿿??\omega t)]$",
+    "status": "failed"
+  },
+  {
+    "id": 388,
+    "title": "smartalecH/meep: python/examples/antenna-radiation.ipynb",
+    "code": "# [MD]\n# Radiation Pattern of an Antenna\n\n# [MD]\nIn this example, we compute the radiation pattern of an antenna. This involves an electric-current point dipole emitter in vacuum. The source is placed at the center of a 2d cell surrounded by PML. The near fields are obtained on a bounding box defined along the edges of the non-PML region. The far fields are computed in two ways from closed surfaces: (1) sides of a square and (2) circumference of a circle, having a length/radius many times larger than the source wavelength and lying beyond the cell. From both the near and far fields, we will al",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex388>\", line 5\n    In this example, we compute the radiation pattern of an antenna. This involves an electric-current point dipole emitter in vacuum. The source is placed at the center of a 2d cell surrounded by PML. The near fi",
+    "status": "failed"
+  },
+  {
+    "id": 393,
+    "title": "smartalecH/meep: python/examples/differential_cross_section.py",
+    "code": "import meep as mp\r\nimport numpy as np\r\nimport matplotlib.pyplot as plt\r\nimport PyMieScatt as ps\r\n\r\nr = 1.0  # radius of sphere\r\n\r\nfrq_cen = 1.0\r\n\r\nresolution = 20 # pixels/um\r\n\r\ndpml = 0.5\r\ndair = 1.5 # at least 0.5/frq_cen padding between source and near-field monitor\r\n\r\npml_layers = [mp.PML(thickness=dpml)]\r\n\r\ns = 2*(dpml+dair+r)\r\ncell_size = mp.Vector3(s,s,s)\r\n\r\n# circularly-polarized source with propagation axis along x\r\n# is_integrated=True necessary for any planewave source extending into PML\r\nsources = [mp.Source(mp.GaussianSource(frq_cen,fwidth=0.2*frq_cen,is_integrated=True),\r\n       ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex393>\", line 4, in <module>\nModuleNotFoundError: No module named 'PyMieScatt'\n",
+    "status": "failed"
+  },
+  {
+    "id": 395,
+    "title": "smartalecH/meep: python/examples/bend-flux.ipynb",
+    "code": "# [MD]\n# Transmittance Spectrum of a Waveguide Bend\n\n# [MD]\nWe have computed the field patterns for light propagating around a waveguide bend. While this can be visually informative, the results are not quantitatively satisfying. We'd like to know exactly how much power makes it around the bend (transmittance), how much is reflected (reflectance), and how much is radiated away (scattered loss). How can we do this?\n\nThe basic principles are described in Introduction. The computation involves keeping track of the fields and their Fourier transform in a certain region, and from this computing the",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex395>\", line 5\n    We have computed the field patterns for light propagating around a waveguide bend. While this can be visually informative, the results are not quantitatively satisfying. We'd like to know exactly how much powe",
+    "status": "failed"
+  },
+  {
+    "id": 397,
+    "title": "smartalecH/meep: python/examples/cavity-farfield.ipynb",
+    "code": "# [MD]\n## Far-Field Profile of a Cavity\n\nFor this demonstration, we will compute the far-field spectra of a resonant cavity mode in a holey waveguide; a structure we had explored in [Tutorial/Resonant Modes and Transmission in a Waveguide Cavity](https://meep.readthedocs.io/en/latest/Python_Tutorials/Resonant_Modes_and_Transmission_in_a_Waveguide_Cavity/). The structure is shown in the left image below.\n\n![center](https://meep.readthedocs.io/en/latest/images/N2ff_comp_cell.png)\n\nTo set this up, we simply remove the last portion of [examples/holey-wvg-cavity.py](https://github.com/NanoComp/meep",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex397>\", line 4\n    For this demonstration, we will compute the far-field spectra of a resonant cavity mode in a holey waveguide; a structure we had explored in [Tutorial/Resonant Modes and Transmission in a Waveguide Cavity](htt",
+    "status": "failed"
+  },
+  {
+    "id": 399,
+    "title": "smartalecH/meep: python/examples/metal-cavity-ldos.ipynb",
+    "code": "# [MD]\n# Local Density of States\n\nIn this example, we will demonstrate the local [density of states](https://en.wikipedia.org/wiki/Density_of_states) (LDOS) feature by investigating the Purcell enhancement phenomena in a metallic cavity. The LDOS, in general, has many important uses for understanding classical dipole sources, but also in many physical phenomena that can be understood semiclassically in terms of dipole currents &mdash; for example, the [spontaneous emission](https://en.wikipedia.org/wiki/Spontaneous_emission) rate of atoms (key to fluorescence and lasing phenomena) is proportio",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex399>\", line 4\n    In this example, we will demonstrate the local [density of states](https://en.wikipedia.org/wiki/Density_of_states) (LDOS) feature by investigating the Purcell enhancement phenomena in a metallic cavity. The L",
+    "status": "failed"
+  },
+  {
+    "id": 403,
+    "title": "smartalecH/meep: python/examples/binary_grating_n2f.ipynb",
+    "code": "# [MD]\n# Diffraction Spectrum of a Finite Binary Grating\n\n# [MD]\nIn this example, we compute the diffraction spectrum of a binary phase [grating](https://en.wikipedia.org/wiki/Diffraction_grating) with finite length. To compute the diffraction spectrum of the infinite periodic structure requires [mode decomposition](https://meep.readthedocs.io/en/latest/Mode_Decomposition/); for a demonstration, see [Tutorials/Mode Decomposition/Diffraction Spectrum of a Binary Grating](https://meep.readthedocs.io/en/latest/Python_Tutorials/Mode_Decomposition/#diffraction-spectrum-of-a-binary-grating) which al",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex403>\", line 5\n    In this example, we compute the diffraction spectrum of a binary phase [grating](https://en.wikipedia.org/wiki/Diffraction_grating) with finite length. To compute the diffraction spectrum of the infinite perio",
+    "status": "failed"
+  },
+  {
+    "id": 410,
+    "title": "smartalecH/meep: python/examples/cavity_arrayslice.py",
+    "code": "import meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\n# set up the geometry\neps = 13\nw = 1.2\nr = 0.36\nd = 1.4\nN = 3\nsy = 6\npad = 2\ndpml = 1\nsx = (2 * (pad + dpml + N)) + d - 1\nfcen = 0.25\ndf = 0.2\nnfreq = 500\n\ncell = mp.Vector3(sx, sy, 0)\n\nblk = mp.Block(size=mp.Vector3(mp.inf, w, mp.inf),\n               material=mp.Medium(epsilon=eps))\n\ngeometry = [blk]\n\nfor i in range(3):\n    geometry.append(mp.Cylinder(r, center=mp.Vector3(d / 2 + i)))\n\nfor i in range(3):\n    geometry.append(mp.Cylinder(r, center=mp.Vector3(d / -2 - i)))\n\nsim = mp.Simulation(cell_size=cell,\n                 ",
+    "error": "-----------\nInitializing structure...\ntime for choose_chunkdivision = 0.000118017 s\nWorking in 2D dimensions.\nComputational cell is 12.4 x 6 x 0 with resolution 20\n     block, center = (0,0,0)\n          size (1e+20,1.2,1e+20)\n          axes (1,0,0), (0,1,0), (0,0,1)\n          dielectric constant epsilon diagonal = (13,13,13)\n     cylinder, center = (0.7,0,0)\n          radius 0.36, height 1e+20, ax",
+    "status": "failed"
+  },
+  {
+    "id": 411,
+    "title": "smartalecH/meep: python/examples/adjoint_optimization/01-Introduction.ipynb",
+    "code": "# [MD]\n# Meep Adjoint Solver - Introduction\n\nThis tutorial serves as a basic introduction to MEEP's adjoint solver. The adjoint solver provides a simple and flexible interface to calculating \"sensitivities\" or gradients of user specified objective functions with respect to **any number** of design variables -- **all with the cost of just two simulations.**\n\nPractical electromagnetic design problems are often constrained by complicated design requirements that aren't easily satisfied with physical intuition. We often formulate our problem as functions of Fourier transformed fields, (e.g. S-para",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex411>\", line 4\n    This tutorial serves as a basic introduction to MEEP's adjoint solver. The adjoint solver provides a simple and flexible interface to calculating \"sensitivities\" or gradients of user specified objective functi",
+    "status": "failed"
+  },
+  {
+    "id": 412,
+    "title": "smartalecH/meep: python/examples/adjoint_optimization/02-Waveguide_Bend.ipynb",
+    "code": "# [MD]\n# Waveguide Bend Optimization\n\nIn this tutorial, we'll examine how we can use Meep's adjoint solver to optimize for a particular design criteria. Specifcally, we'll maximize the transmission around a silicon waveguide bend. This tutorial will illustrate the adjoint solver's ability to quickly calculate gradients for objective functions with multiple objective quantities.\n\nTo begin, we'll import meep, our adjoint module, `autograd` (as before) and we will also import `nlopt`, a nonlinear optimization package.\n\n# [CODE]\nimport meep as mp\nimport meep.adjoint as mpa\nimport numpy as np\nfrom ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex412>\", line 6\n    To begin, we'll import meep, our adjoint module, `autograd` (as before) and we will also import `nlopt`, a nonlinear optimization package.\n                ^\nSyntaxError: unterminated string literal (detected a",
+    "status": "failed"
+  },
+  {
+    "id": 428,
+    "title": "NanoComp/meep: python/tests/test_visualization.py",
+    "code": "# visualization.py - Tests the visualization module. Checks 2D\n# plotting of a waveguide with several sources, monitors, and\n# boundary conditions. Checks for subdomain plots.\n#\n# Also tests the animation run function, mp4 output, jshtml output, and git output.\nimport os\nimport unittest\nfrom subprocess import call\n\nimport matplotlib\nimport numpy as np\n\nimport meep as mp\n\n# Make sure we have matplotlib installed\n\nmatplotlib.use(\"agg\")  # Set backend for consistency and to pull pixels quickly\nimport io\n\nfrom matplotlib import pyplot as plt\n\n\ndef hash_figure(fig):\n    buf = io.BytesIO()\n    fig.s",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex428>\", line 275\n    mp.in_volume(\n                ^\nSyntaxError: '(' was never closed\n",
+    "status": "failed"
+  },
+  {
+    "id": 499,
+    "title": "NanoComp/meep: python/examples/ring_gds.py",
+    "code": "import importlib\n\nimport gdspy\nimport numpy as np\nfrom matplotlib import pyplot as plt\n\nimport meep as mp\n\n# core and cladding materials\nSi = mp.Medium(index=3.4)\nSiO2 = mp.Medium(index=1.4)\n\n# layer numbers for GDS file\nRING_LAYER = 0\nSOURCE0_LAYER = 1\nSOURCE1_LAYER = 2\nMONITOR_LAYER = 3\nSIMULATION_LAYER = 4\n\nresolution = 50  # pixels/關m\ndpml = 1  # thickness of PML\nzmin = 0  # minimum z value of simulation domain (0 for 2D)\nzmax = 0  # maximum z value of simulation domain (0 for 2D)\n\n\ndef create_ring_gds(radius, width):\n    # Reload the library each time to prevent gds library name clashes\n ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex499>\", line 3, in <module>\nModuleNotFoundError: No module named 'gdspy'\n",
+    "status": "failed"
+  },
+  {
+    "id": 502,
+    "title": "NanoComp/meep: python/examples/mie_scattering.py",
+    "code": "import matplotlib.pyplot as plt\r\nimport numpy as np\r\nimport PyMieScatt as ps\r\n\r\nimport meep as mp\r\n\r\nr = 1.0  # radius of sphere\r\n\r\nwvl_min = 2 * np.pi * r / 10\r\nwvl_max = 2 * np.pi * r / 2\r\n\r\nfrq_min = 1 / wvl_max\r\nfrq_max = 1 / wvl_min\r\nfrq_cen = 0.5 * (frq_min + frq_max)\r\ndfrq = frq_max - frq_min\r\nnfrq = 100\r\n\r\n## at least 8 pixels per smallest wavelength, i.e. np.floor(8/wvl_min)\r\nresolution = 25\r\n\r\ndpml = 0.5 * wvl_max\r\ndair = 0.5 * wvl_max\r\n\r\npml_layers = [mp.PML(thickness=dpml)]\r\n\r\nsymmetries = [mp.Mirror(mp.Y), mp.Mirror(mp.Z, phase=-1)]\r\n\r\ns = 2 * (dpml + dair + r)\r\ncell_size = mp.Vec",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex502>\", line 3, in <module>\nModuleNotFoundError: No module named 'PyMieScatt'\n",
+    "status": "failed"
+  },
+  {
+    "id": 507,
+    "title": "NanoComp/meep: python/examples/binary_grating_oblique.ipynb",
+    "code": "# [MD]\n# Reflectance and Transmittance Spectra for Planewave at Oblique Incidence\n\n# [MD]\nAs an additional demonstration of the mode-decomposition feature, the reflectance and transmittance of all diffracted orders for any grating with no material absorption and a planewave source incident at any arbitrary angle and wavelength must necessarily sum to unity. Also, the total reflectance and transmittance must be equivalent to values computed using the Poynting flux. This demonstration is somewhat similar to the [single-mode waveguide example](https://nbviewer.jupyter.org/github/NanoComp/meep/blo",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex507>\", line 11\n    Results are computed for a single wavelength of 0.5 關m. The pulsed planewave is incident at an angle of 10.7째. Its spatial profile is defined using the source amplitude function `pw_amp`. This [anonymous func",
+    "status": "failed"
+  },
+  {
+    "id": 510,
+    "title": "NanoComp/meep: python/examples/ring.ipynb",
+    "code": "# [MD]\n# Modes of a Ring Resonator\n\n# [MD]\nAs described in Introduction, another common task for FDTD simulation is to find the resonant modes ??frequencies and decay rates ??of some cavity structure. You might want to read that again to recall the basic simulation strategy. We will show how this works for a ring resonator, which is simply a waveguide bent into a circle. This script can be also found in examples/ring.py; the notebook is examples/ring.ipynb. In fact, since this structure has cylindrical symmetry, we can simulate it much more efficiently by using cylindrical coordinates, but for",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex510>\", line 5\n    As described in Introduction, another common task for FDTD simulation is to find the resonant modes ??frequencies and decay rates ??of some cavity structure. You might want to read that again to recall the bas",
+    "status": "failed"
+  },
+  {
+    "id": 511,
+    "title": "NanoComp/meep: python/examples/mode-decomposition.ipynb",
+    "code": "# [MD]\n## Reflectance of a Waveguide Taper\n\nThis example involves computing the reflectance of the fundamental mode of a linear waveguide taper. The structure and the simulation parameters are shown in the schematic below. We will verify that computing the reflectance, the fraction of the incident power which is reflected, using two different methods produces nearly identical results: (1) mode decomposition and (2) [Poynting flux](https://meep.readthedocs.io/en/latest/Introduction/#transmittancereflectance-spectra). Also, we will demonstrate that the scaling of the reflectance with the taper l",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex511>\", line 4\n    This example involves computing the reflectance of the fundamental mode of a linear waveguide taper. The structure and the simulation parameters are shown in the schematic below. We will verify that computing ",
+    "status": "failed"
+  },
+  {
+    "id": 514,
+    "title": "NanoComp/meep: python/examples/zone_plate.ipynb",
+    "code": "# [MD]\n# Focusing Properties of a Binary-Phase Zone Plate\n\nIt is also possible to compute a [near-to-far field transformation](https://meep.readthedocs.io/en/latest/Python_User_Interface/#near-to-far-field-spectra) in cylindrical coordinates. This is demonstrated in this example for a binary-phase [zone plate](https://en.wikipedia.org/wiki/Zone_plate) which is a rotationally-symmetric diffractive lens used to focus a normally-incident planewave to a single spot.\n\nUsing [scalar theory](http://zoneplate.lbl.gov/theory), the radius of the $n$<sup>th</sup> zone can be computed as:\n\n<center>\n$$ r_n",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex514>\", line 4\n    It is also possible to compute a [near-to-far field transformation](https://meep.readthedocs.io/en/latest/Python_User_Interface/#near-to-far-field-spectra) in cylindrical coordinates. This is demonstrated in t",
+    "status": "failed"
+  },
+  {
+    "id": 521,
+    "title": "NanoComp/meep: python/examples/dipole_in_vacuum_cyl_off_axis.py",
+    "code": "\"\"\"Radiation pattern of an off-axis dipole in cylindrical coordinates.\n\nTutorial Reference:\n\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Near_to_Far_Field_Spectra/#radiation-pattern-of-an-antenna-in-cylindrical-coordinates\n\"\"\"\n\nimport argparse\nimport cmath\nimport math\nfrom typing import Tuple\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\nRESOLUTION_UM = 50\nWAVELENGTH_UM = 1.0\nPML_UM = 1.0\nFARFIELD_RADIUS_UM = 1e6 * WAVELENGTH_UM\nNUM_FARFIELD_PTS = 50\nAZIMUTHAL_RAD = 0\nPOWER_DECAY_THRESHOLD = 1e-4\nGREENCYL_TOL = 1e-6\n\nfrequency = 1 / WAVELENGTH_UM\npolar_rad ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex521>\", line 255, in <module>\nAttributeError: 'ArgumentParser' object has no attribute 'parse_'\n",
+    "status": "failed"
+  },
+  {
+    "id": 522,
+    "title": "NanoComp/meep: python/examples/absorbed_power_density.ipynb",
+    "code": "# [MD]\n# Absorbed Power Density Map of a Lossy Cylinder\n\nThe `dft_flux` routines (`add_flux`) described in the previous examples compute the *total* power in a given region (`FluxRegion`). It is also possible to compute the *local* (i.e., position-dependent) absorbed power density in a dispersive (lossy) material. This quantity is useful for obtaining a spatial map of the photon absorption. The absorbed power density is defined as $$\\mathrm{Re}\\, \\left[ {\\mathbf{E}^* \\cdot \\frac{d\\mathbf{P}}{dt}} \\right]$$ where $\\mathbf{P}$ is the total polarization field. In the Fourier (frequency) domain wi",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex522>\", line 4\n    The `dft_flux` routines (`add_flux`) described in the previous examples compute the *total* power in a given region (`FluxRegion`). It is also possible to compute the *local* (i.e., position-dependent) absorbe",
+    "status": "failed"
+  },
+  {
+    "id": 525,
+    "title": "NanoComp/meep: python/examples/refl-quartz.ipynb",
+    "code": "# [MD]\n## Reflectance Spectrum of Air-Silica Interface\n\nWe will compute the broadband [reflectance](https://en.wikipedia.org/wiki/Reflectance) spectrum at normal incidence for a planar interface of vacuum/air and [fused quartz](https://en.wikipedia.org/wiki/Fused_quartz). As a validation, we will compare the simulated result with the analytic reflectance computed using the [Fresnel equations](https://en.wikipedia.org/wiki/Fresnel_equations). This is similar to an example in [Tutorial/Basics/Angular Reflectance Spectrum of a Planar Interface](https://meep.readthedocs.io/en/latest/Python_Tutoria",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex525>\", line 6\n    The wavelength-dependent, lossless permittivity of fused quartz, measured experimentally at 20째C, can be approximated by the [Sellmeier equation](https://en.wikipedia.org/wiki/Sellmeier_equation):\n            ",
+    "status": "failed"
+  },
+  {
+    "id": 533,
+    "title": "NanoComp/meep: python/examples/straight-waveguide.ipynb",
+    "code": "# [MD]\n# A straight waveguide\nFor our first example, let's examine the field pattern excited by a localized continuous wave (CW) source in a waveguide ??first straight, then bent. The waveguide will have frequency-independent $\\epsilon$=12 and width 1 $\\mu$m. The unit length in this example is 1 $\\mu$m. See also Units.\n\nThe first thing to do always is to load the Meep library, along with any other library we may need for post processing or visualization:\n\n# [CODE]\nimport meep as mp\n\n# [MD]\n## Simulation Domain\n\nWe can begin specifying each of the simulation objects starting with the computatio",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex533>\", line 3\n    For our first example, let's examine the field pattern excited by a localized continuous wave (CW) source in a waveguide ??first straight, then bent. The waveguide will have frequency-independent $\\epsilon$=12",
+    "status": "failed"
+  },
+  {
+    "id": 537,
+    "title": "NanoComp/meep: python/examples/cylinder_cross_section.ipynb",
+    "code": "# [MD]\n# Scattering Cross Section of a Finite Dielectric Cylinder\n\nAs an alternative to the \"ring\" sources of the previous examples, it is also possible to launch planewaves in cylindrical coordinates. This is demonstrated in this example which involves computing the scattering cross section of a finite-height dielectric cylinder. The results for the 2d simulation involving the cylindrical $(r,z)$ cell are validated by comparing to the same simulation in 3d Cartesian coordinates which tends to be much slower and less accurate at the same grid resolution.\n\nThe calculation of the scattering cros",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex537>\", line 4\n    As an alternative to the \"ring\" sources of the previous examples, it is also possible to launch planewaves in cylindrical coordinates. This is demonstrated in this example which involves computing the scatteri",
+    "status": "failed"
+  },
+  {
+    "id": 540,
+    "title": "NanoComp/meep: python/examples/mpb_data_analysis.py",
+    "code": "import os\nimport sys\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\nfrom meep import mpb\n\nexamples_dir = os.path.realpath(os.path.dirname(__file__))\nsys.path.insert(0, examples_dir)\n\n\ndef tri_rods():\n    # Import the ModeSolver defined in the mpb_tri_rods.py example\n    from mpb_tri_rods import ms as tr_ms\n\n    efields = []\n\n    # Band function to collect the efields\n    def get_efields(tr_ms, band):\n        efields.append(tr_ms.get_efield(band))\n\n    tr_ms.run_tm(\n        mpb.output_at_kpoint(\n            mp.Vector3(1 / -3, 1 / 3), mpb.fix_efield_phase, get_efields\n   ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex540>\", line 10, in <module>\nNameError: name '__file__' is not defined\n",
+    "status": "failed"
+  },
+  {
+    "id": 544,
+    "title": "NanoComp/meep: python/examples/mie_scattering.ipynb",
+    "code": "# [MD]\n# Mie Scattering of a Lossless Dielectric Sphere\n\nA common reference calculation in computational electromagnetics for which an analytical solution is known is [Mie scattering](https://en.wikipedia.org/wiki/Mie_scattering) which involves computing the [scattering efficiency](http://www.thermopedia.com/content/956/) of a single, homogeneous sphere given an incident planewave. The scattered power of any object (absorbing or non) can be computed by surrounding it with a *closed* [DFT flux](https://meep.readthedocs.io/en/latest/Python_User_Interface/#flux-spectra) box (its size and orientat",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex544>\", line 6\n    The scattering cross section is the scattered power in all directions divided by the incident intensity. The scattering efficiency, a dimensionless quantity, is the ratio of the scattering cross section to the",
+    "status": "failed"
+  },
+  {
+    "id": 563,
+    "title": "NanoComp/meep: python/examples/solve-cw.py",
+    "code": "\"\"\"\nVerifies that the relative error in the fields of a resonant mode\nof a 2d ring resonator is monotonically decreasing with decreasing\ntolerance of the CW solver. Also visualizes the fields of the resonant\nmode in the time and frequency domains.\n\"\"\"\n\nimport matplotlib\n\nmatplotlib.use(\"agg\")\nimport matplotlib.pyplot as plt\nimport numpy as np\nimport meep as mp\n\nresolution = 20  # pixels/關m\nn = 3.4  # refractive index of ring\nw = 1  # width of ring\nr = 1  # inner radius of ring\npad = 4  # padding between outer ring and PML\ndpml = 2  # PML thickness\n\nsxy = 2 * (r + w + pad + dpml)\ncell_size = mp",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex563>\", line 80, in <module>\n  File \"/opt/conda/envs/mp/lib/python3.10/site-packages/numpy/__init__.py\", line 400, in __getattr__\n    raise AttributeError(\nAttributeError: `np.complex_` was removed in the NumPy 2.0 release. Use ",
+    "status": "failed"
+  },
+  {
+    "id": 569,
+    "title": "NanoComp/meep: python/examples/waveguide_crossing.py",
+    "code": "\"\"\"waveguide_crossing.py - Using meep's adjoint solver, designs a waveguide\ncrossing that maximizes transmission at a single frequency.\n\nTwo approaches are demonstrated: (1) start with the nominal crossing shape and\nperform shape optimization via meep's smoothed projection feature; (2) run a\nfull topology optimization starting from an initial grayscale. Evolve the design\nuntil 棺=??\n\nImportantly, this particular example highlights some of the ways one can use the\nnovel smoothed projection function to perform both shape and topology\noptimization.\n\"\"\"\n\nfrom typing import Callable, List, Optional,",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex569>\", line 266\n    plt.figure(figsize=(5.25\n                       ^\nSyntaxError: '(' was never closed\n",
+    "status": "failed"
+  },
+  {
+    "id": 570,
+    "title": "NanoComp/meep: python/examples/holey-wvg-bands.ipynb",
+    "code": "# [MD]\n# Band Diagram\n\nIn this tutorial, we will build off of the `holey-wvg-cavity.ipynb` tutorial by considering a smaller, more abstract calculation that we really should have done first. In particular, we compute the band diagram of the infinite periodic waveguide by itself with no defects. This is very similar to the types of calculations that MPB performs, but with a different method that has its own strengths and weaknesses. By analyzing what solutions can propagate in the periodic structure, one gains fundamental insight into the aperiodic structures from `holey-wvg-cavity.ipynb`.\n\nLet",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex570>\", line 6\n    Let us briefly review the problem. In a periodic system of this sort, the eigen-solutions can be expressed in the form of Bloch modes: a periodic Bloch envelope multiplied by a planewave $exp[i(k?꿿??\omega t)]$",
+    "status": "failed"
+  },
+  {
+    "id": 572,
+    "title": "NanoComp/meep: python/examples/antenna-radiation.ipynb",
+    "code": "# [MD]\n# Radiation Pattern of an Antenna\n\n# [MD]\nIn this example, we compute the radiation pattern of an antenna. This involves an electric-current point dipole emitter in vacuum. The source is placed at the center of a 2d cell surrounded by PML. The near fields are obtained on a bounding box defined along the edges of the non-PML region. The far fields are computed in two ways from closed surfaces: (1) sides of a square and (2) circumference of a circle, having a length/radius many times larger than the source wavelength and lying beyond the cell. From both the near and far fields, we will al",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex572>\", line 5\n    In this example, we compute the radiation pattern of an antenna. This involves an electric-current point dipole emitter in vacuum. The source is placed at the center of a 2d cell surrounded by PML. The near fi",
+    "status": "failed"
+  },
+  {
+    "id": 577,
+    "title": "NanoComp/meep: python/examples/differential_cross_section.py",
+    "code": "import matplotlib.pyplot as plt\r\nimport numpy as np\r\nimport PyMieScatt as ps\r\n\r\nimport meep as mp\r\n\r\nr = 1.0  # radius of sphere\r\n\r\nfrq_cen = 1.0\r\n\r\nresolution = 20  # pixels/um\r\n\r\ndpml = 0.5\r\ndair = 1.5  # at least 0.5/frq_cen padding between source and near-field monitor\r\n\r\npml_layers = [mp.PML(thickness=dpml)]\r\n\r\ns = 2 * (dpml + dair + r)\r\ncell_size = mp.Vector3(s, s, s)\r\n\r\n# circularly-polarized source with propagation axis along x\r\n# is_integrated=True necessary for any planewave source extending into PML\r\nsources = [\r\n    mp.Source(\r\n        mp.GaussianSource(frq_cen, fwidth=0.2 * frq_ce",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex577>\", line 3, in <module>\nModuleNotFoundError: No module named 'PyMieScatt'\n",
+    "status": "failed"
+  },
+  {
+    "id": 579,
+    "title": "NanoComp/meep: python/examples/bend-flux.ipynb",
+    "code": "# [MD]\n# Transmittance Spectrum of a Waveguide Bend\n\n# [MD]\nWe have computed the field patterns for light propagating around a waveguide bend. While this can be visually informative, the results are not quantitatively satisfying. We'd like to know exactly how much power makes it around the bend (transmittance), how much is reflected (reflectance), and how much is radiated away (scattered loss). How can we do this?\n\nThe basic principles are described in Introduction. The computation involves keeping track of the fields and their Fourier transform in a certain region, and from this computing the",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex579>\", line 5\n    We have computed the field patterns for light propagating around a waveguide bend. While this can be visually informative, the results are not quantitatively satisfying. We'd like to know exactly how much powe",
+    "status": "failed"
+  },
+  {
+    "id": 581,
+    "title": "NanoComp/meep: python/examples/cavity-farfield.ipynb",
+    "code": "# [MD]\n## Far-Field Profile of a Cavity\n\nFor this demonstration, we will compute the far-field spectra of a resonant cavity mode in a holey waveguide; a structure we had explored in [Tutorial/Resonant Modes and Transmission in a Waveguide Cavity](https://meep.readthedocs.io/en/latest/Python_Tutorials/Resonant_Modes_and_Transmission_in_a_Waveguide_Cavity/). The structure is shown in the left image below.\n\n![center](https://meep.readthedocs.io/en/latest/images/N2ff_comp_cell.png)\n\nTo set this up, we simply remove the last portion of [examples/holey-wvg-cavity.py](https://github.com/NanoComp/meep",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex581>\", line 4\n    For this demonstration, we will compute the far-field spectra of a resonant cavity mode in a holey waveguide; a structure we had explored in [Tutorial/Resonant Modes and Transmission in a Waveguide Cavity](htt",
+    "status": "failed"
+  },
+  {
+    "id": 583,
+    "title": "NanoComp/meep: python/examples/metal-cavity-ldos.ipynb",
+    "code": "# [MD]\n# Local Density of States\n\nIn this example, we will demonstrate the local [density of states](https://en.wikipedia.org/wiki/Density_of_states) (LDOS) feature by investigating the Purcell enhancement phenomena in a metallic cavity. The LDOS, in general, has many important uses for understanding classical dipole sources, but also in many physical phenomena that can be understood semiclassically in terms of dipole currents &mdash; for example, the [spontaneous emission](https://en.wikipedia.org/wiki/Spontaneous_emission) rate of atoms (key to fluorescence and lasing phenomena) is proportio",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex583>\", line 4\n    In this example, we will demonstrate the local [density of states](https://en.wikipedia.org/wiki/Density_of_states) (LDOS) feature by investigating the Purcell enhancement phenomena in a metallic cavity. The L",
+    "status": "failed"
+  },
+  {
+    "id": 588,
+    "title": "NanoComp/meep: python/examples/binary_grating_n2f.ipynb",
+    "code": "# [MD]\n# Diffraction Spectrum of a Finite Binary Grating\n\n# [MD]\nIn this example, we compute the diffraction spectrum of a binary phase [grating](https://en.wikipedia.org/wiki/Diffraction_grating) with finite length. To compute the diffraction spectrum of the infinite periodic structure requires [mode decomposition](https://meep.readthedocs.io/en/latest/Mode_Decomposition/); for a demonstration, see [Tutorials/Mode Decomposition/Diffraction Spectrum of a Binary Grating](https://meep.readthedocs.io/en/latest/Python_Tutorials/Mode_Decomposition/#diffraction-spectrum-of-a-binary-grating) which al",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex588>\", line 5\n    In this example, we compute the diffraction spectrum of a binary phase [grating](https://en.wikipedia.org/wiki/Diffraction_grating) with finite length. To compute the diffraction spectrum of the infinite perio",
+    "status": "failed"
+  },
+  {
+    "id": 595,
+    "title": "NanoComp/meep: python/examples/cavity_arrayslice.py",
+    "code": "import matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\n# set up the geometry\neps = 13\nw = 1.2\nr = 0.36\nd = 1.4\nN = 3\nsy = 6\npad = 2\ndpml = 1\nsx = (2 * (pad + dpml + N)) + d - 1\nfcen = 0.25\ndf = 0.2\nnfreq = 500\n\ncell = mp.Vector3(sx, sy, 0)\n\nblk = mp.Block(size=mp.Vector3(mp.inf, w, mp.inf), material=mp.Medium(epsilon=eps))\n\ngeometry = [blk]\n\ngeometry.extend(mp.Cylinder(r, center=mp.Vector3(d / 2 + i)) for i in range(3))\ngeometry.extend(mp.Cylinder(r, center=mp.Vector3(d / -2 - i)) for i in range(3))\n\nsim = mp.Simulation(\n    cell_size=cell,\n    geometry=geometry,\n    sources=[]",
+    "error": "-----------\nInitializing structure...\ntime for choose_chunkdivision = 0.000113964 s\nWorking in 2D dimensions.\nComputational cell is 12.4 x 6 x 0 with resolution 20\n     block, center = (0,0,0)\n          size (1e+20,1.2,1e+20)\n          axes (1,0,0), (0,1,0), (0,0,1)\n          dielectric constant epsilon diagonal = (13,13,13)\n     cylinder, center = (0.7,0,0)\n          radius 0.36, height 1e+20, ax",
+    "status": "failed"
+  },
+  {
+    "id": 596,
+    "title": "NanoComp/meep: python/examples/eps_fit_lorentzian.py",
+    "code": "\"\"\"\nA module for fitting the complex refractive index profile over a broad\nbandwidth to a sum of Lorentzian polarizability terms using gradient-based\noptimization via NLopt (nlopt.readthedocs.io). The fitting parameters are\nthen used to define a `Medium` object.\n\"\"\"\nfrom typing import Tuple\n\nimport matplotlib\nimport meep as mp\nimport nlopt\nimport numpy as np\n\nmatplotlib.use(\"agg\")\nimport matplotlib.pyplot as plt\n\n\ndef lorentzfunc(p: np.ndarray, x: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Returns the complex 琯 profile given a set of Lorentzian parameters p\n    (?_0, ?_0, 款_0, ?_1, ?_1, 款_1, ...) ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex596>\", line 11, in <module>\nModuleNotFoundError: No module named 'nlopt'\n",
+    "status": "failed"
+  },
+  {
+    "id": 597,
+    "title": "NanoComp/meep: python/examples/adjoint_optimization/mode_converter.py",
+    "code": "\"\"\"Topology optimization of a waveguide mode converter.\n\nThe worst-case optimization is based on minimizing the maximum of {R, 1-T} where\nR (reflectance) is $|S_{11}|^2$ for mode 1 and T (transmittance) is $|S_{21}|^2$\nfor mode 2 across six different wavelengths. The optimization uses the\nConservative Convex Separable Approximation (CCSA) algorithm from NLopt.\n\nThe minimum linewidth constraint is adapted from A.M. Hammond et al.,\nOptics Express, Vol. 29, pp. 23916-23938, (2021). doi.org/10.1364/OE.431188\n\"\"\"\n\nfrom typing import List, NamedTuple, Tuple\n\nfrom autograd import numpy as npa, tensor",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex597>\", line 245\n    def line_width_and_spacing_constraint(\n                                         ^\nSyntaxError: '(' was never closed\n",
+    "status": "failed"
+  },
+  {
+    "id": 598,
+    "title": "NanoComp/meep: python/examples/adjoint_optimization/binary_grating_levelset.py",
+    "code": "\"\"\"Computes the adjoint derivative with respect to shape parameters.\n\nThis is a 2D example for computing the derivative of the diffraction efficiency\nof the first transmitted order of a 1D grating with respect to the grating\nheight. The accuracy of the adjoint derivative is validated using the\nbrute-force finite-difference approximation. The grating structure is\nrepresented as a level-set formulation.\n\nReference Tutorial:\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Adjoint_Solver/#derivatives-with-respect-to-shape-parameters\n\"\"\"\n\nfrom enum import Enum\nfrom typing import Callable, Tu",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex598>\", line 244\n    mp.Block(\n            ^\nSyntaxError: '(' was never closed\n",
+    "status": "failed"
+  },
+  {
+    "id": 599,
+    "title": "NanoComp/meep: python/examples/adjoint_optimization/01-Introduction.ipynb",
+    "code": "# [MD]\n# Meep Adjoint Solver - Introduction\n\nThis tutorial serves as a basic introduction to MEEP's adjoint solver. The adjoint solver provides a simple and flexible interface to calculating \"sensitivities\" or gradients of user specified objective functions with respect to **any number** of design variables -- **all with the cost of just two simulations.**\n\nPractical electromagnetic design problems are often constrained by complicated design requirements that aren't easily satisfied with physical intuition. We often formulate our problem as functions of Fourier transformed fields, (e.g. S-para",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex599>\", line 4\n    This tutorial serves as a basic introduction to MEEP's adjoint solver. The adjoint solver provides a simple and flexible interface to calculating \"sensitivities\" or gradients of user specified objective functi",
+    "status": "failed"
+  },
+  {
+    "id": 601,
+    "title": "NanoComp/meep: python/examples/adjoint_optimization/02-Waveguide_Bend.ipynb",
+    "code": "# [MD]\n# Waveguide Bend Optimization\n\nIn this tutorial, we'll examine how we can use Meep's adjoint solver to optimize for a particular design criteria. Specifcally, we'll maximize the transmission around a silicon waveguide bend. This tutorial will illustrate the adjoint solver's ability to quickly calculate gradients for objective functions with multiple objective quantities.\n\nTo begin, we'll import meep, our adjoint module, `autograd` (as before) and we will also import `nlopt`, a nonlinear optimization package.\n\n# [CODE]\nimport meep as mp\nimport meep.adjoint as mpa\nimport numpy as np\nfrom ",
+    "error": "\n--- traceback ---\nTraceback (most recent call last):\n  File \"/tmp/_run_single.py\", line 61, in <module>\n    exec(compile(code, f\"<ex{example_id}>\", \"exec\"), ns)\n  File \"<ex601>\", line 6\n    To begin, we'll import meep, our adjoint module, `autograd` (as before) and we will also import `nlopt`, a nonlinear optimization package.\n                ^\nSyntaxError: unterminated string literal (detected a",
+    "status": "failed"
+  },
+  {
+    "id": 341,
+    "title": "smartalecH/meep: python/examples/binary_grating_n2f.py",
+    "code": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nimport math\nimport numpy as np\nfrom numpy import linalg as LA\nimport matplotlib.pyplot as plt\n\nresolution = 25        # pixels/關m\n\ndpml = 1.0             # PML thickness\ndsub = 3.0             # substrate thickness\ndpad = 3.0             # padding between grating and PML\ngp = 10.0              # grating period\ngh = 0.5               # grating height\ngdc = 0.5              # grating duty cycle\n\nnperiods = 10          # number of unit cells in finite periodic grating\n\nff_distance = 1e8      # far-field distance from near-field monitor\nff_angle = 20     ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 353,
+    "title": "smartalecH/meep: python/examples/parallel-wvgs-force.py",
+    "code": "import meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 40   # pixels/關m\n    \nSi = mp.Medium(index=3.45)\n\ndpml = 1.0\npml_layers = [mp.PML(dpml)]\n    \nsx = 5\nsy = 3\ncell = mp.Vector3(sx+2*dpml,sy+2*dpml,0)\n\na = 1.0     # waveguide width/height\n\nk_point = mp.Vector3(z=0.5)\n\ndef parallel_waveguide(s,xodd):\n    geometry = [mp.Block(center=mp.Vector3(-0.5*(s+a)),\n                         size=mp.Vector3(a,a,mp.inf),\n                         material=Si),\n                mp.Block(center=mp.Vector3(0.5*(s+a)),\n                         size=mp.Vector3(a,a,mp.inf),\n          ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 374,
+    "title": "smartalecH/meep: python/examples/mode-decomposition.py",
+    "code": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nimport matplotlib.pyplot as plt\n\nresolution = 25   # pixels/關m\n\nw1 = 1.0          # width of waveguide 1\nw2 = 2.0          # width of waveguide 2\nLw = 10.0         # length of waveguides 1 and 2\n\n# lengths of waveguide taper\nLts = [2**m for m in range(4)]\n\ndair = 3.0        # length of air region\ndpml_x = 6.0      # length of PML in x direction\ndpml_y = 2.0      # length of PML in y direction\n\nsy = dpml_y+dair+w2+dair+dpml_y\n\nSi = mp.Medium(epsilon=12.0)\n\nboundary_layers = [mp.PML(dpml_x,direction=mp.X),\n                   mp.PML(dpml_y,direction=mp.Y",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 378,
+    "title": "smartalecH/meep: python/examples/metasurface_lens.py",
+    "code": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 50         # pixels/關m\n\ndpml = 1.0              # PML thickness\ndsub = 2.0              # substrate thickness\ndpad = 2.0              # padding between grating and PML\n\nlcen = 0.5              # center wavelength\nfcen = 1/lcen           # center frequency\ndf = 0.2*fcen           # frequency width\n\nfocal_length = 200      # focal length of metalens\nspot_length = 100       # far field line length\nff_res = 10             # far field resolution (points/關m)\n\nk_point = mp.Vector3(0,0,0)\n\nglass",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 381,
+    "title": "smartalecH/meep: python/examples/zone_plate.py",
+    "code": "import meep as mp\nimport numpy as np\nimport math\nimport matplotlib.pyplot as plt\n\nresolution = 25             # pixels/關m\n\ndpml = 1.0                  # PML thickness\ndsub = 2.0                  # substrate thickness\ndpad = 2.0                  # padding betweeen zone plate and PML\nzh = 0.5                    # zone-plate height\nzN = 25                     # number of zones (odd zones: ? phase shift, even zones: none)\nfocal_length = 200          # focal length of zone plate\nspot_length = 100           # far-field line length\nff_res = 10                 # far-field resolution\n\npml_layers = [mp.",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 389,
+    "title": "smartalecH/meep: python/examples/polarization_grating.py",
+    "code": "# -*- coding: utf-8 -*-\n\n# polarization grating from C. Oh and M.J. Escuti, Optics Letters, Vol. 33, No. 20, pp. 2287-9, 2008\n# note: reference uses z as the propagation direction and y as the out-of-plane direction; this script uses x and z, respectively\n\nimport meep as mp\nimport numpy as np\nimport math\nimport matplotlib.pyplot as plt\n\nresolution = 50        # pixels/關m\n\ndpml = 1.0             # PML thickness\ndsub = 1.0             # substrate thickness\ndpad = 1.0             # padding thickness\n\nk_point = mp.Vector3(0,0,0)\n\npml_layers = [mp.PML(thickness=dpml,direction=mp.X)]\n\nn_0 = 1.55\ndel",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 391,
+    "title": "smartalecH/meep: python/examples/metal-cavity-ldos.py",
+    "code": "from __future__ import division\n\nimport math\nimport meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\ndef metal_cavity(w):\n    resolution = 50\n    sxy = 2\n    dpml = 1\n    sxy = sxy+2*dpml\n    cell = mp.Vector3(sxy,sxy)\n\n    pml_layers = [mp.PML(dpml)]\n    a = 1\n    t = 0.1\n    geometry = [mp.Block(mp.Vector3(a+2*t,a+2*t,mp.inf), material=mp.metal),\n                mp.Block(mp.Vector3(a,a,mp.inf), material=mp.air)]\n\n    geometry.append(mp.Block(center=mp.Vector3(a/2),\n                             size=mp.Vector3(2*t,w,mp.inf),\n                             material=mp.air))\n\n    fc",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 400,
+    "title": "smartalecH/meep: python/examples/oblique-source.py",
+    "code": "import meep as mp\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 50 # pixels/關m\n\ncell_size = mp.Vector3(14,14)\n\npml_layers = [mp.PML(thickness=2)]\n\n# rotation angle (in degrees) of waveguide, counter clockwise (CCW) around z-axis\nrot_angle = np.radians(20)\n\nw = 1.0 # width of waveguide\n\ngeometry = [mp.Block(center=mp.Vector3(),\n                     size=mp.Vector3(mp.inf,w,mp.inf),\n                     e1=mp.Vector3(x=1).rotate(mp.Vector3(z=1), rot_angle),\n                     e2=mp.Vector3(y=1).rotate(mp.Vector3(z=1), rot_angle),\n                     material=mp.Medium(epsil",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 406,
+    "title": "smartalecH/meep: python/examples/parallel-wvgs-mpb.py",
+    "code": "# -*- coding: utf-8 -*-\n\nimport meep as mp\nfrom meep import mpb\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nresolution = 128  # pixels/關m\n\nSi = mp.Medium(index=3.45)\n\nsyz = 10\ngeometry_lattice = mp.Lattice(size=mp.Vector3(0,syz,syz))\n\nk_points = [mp.Vector3(0.5)]\n\na = 1.0  # waveguide width\n\ndef parallel_waveguide(s,yodd):\n    geometry = [mp.Block(center=mp.Vector3(0,-0.5*(s+a),0),\n                         size=mp.Vector3(mp.inf,a,a),\n                         material=Si),\n                mp.Block(center=mp.Vector3(0,0.5*(s+a),0),\n                         size=mp.Vector3(mp.inf,a,a),\n ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 505,
+    "title": "NanoComp/meep: python/examples/stochastic_emitter_reciprocity.py",
+    "code": "\"\"\"A demonstration of computing the flux emitted in a single direction from a\n   collection of dipole emitters in an LED-like structure using reciprocity.\n\"\"\"\n\nfrom typing import List\nimport numpy as np\nimport matplotlib.pyplot as plt\nimport meep as mp\nfrom meep.materials import Ag\n\nresolution = 200  # pixels/關m\n\nnfreq = 100  # number of frequencies\nndipole = 10  # number of point dipoles in forward simulation\n\nfcen = 1.0  # center frequency of Gaussian source/monitors\ndf = 0.2  # frequency bandwidth of source/monitors\n\ndpml = 1.0  # PML thickness\ndair = 2.0  # air padding thickness\nhrod = 0.7",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 513,
+    "title": "NanoComp/meep: python/examples/binary_grating_n2f.py",
+    "code": "import math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\nfrom numpy import linalg as LA\n\nimport meep as mp\n\nresolution = 25  # pixels/關m\n\ndpml = 1.0  # PML thickness\ndsub = 3.0  # substrate thickness\ndpad = 3.0  # padding between grating and PML\ngp = 10.0  # grating period\ngh = 0.5  # grating height\ngdc = 0.5  # grating duty cycle\n\nnperiods = 10  # number of unit cells in finite periodic grating\n\nff_distance = 1e8  # far-field distance from near-field monitor\nff_angle = 20  # far-field cone angle\nff_npts = 500  # number of far-field points\n\nff_length = ff_distance * math.tan(math.radian",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 526,
+    "title": "NanoComp/meep: python/examples/parallel-wvgs-force.py",
+    "code": "import matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nresolution = 40  # pixels/關m\n\nSi = mp.Medium(index=3.45)\n\ndpml = 1.0\npml_layers = [mp.PML(dpml)]\n\nsx = 5\nsy = 3\ncell = mp.Vector3(sx + 2 * dpml, sy + 2 * dpml, 0)\n\na = 1.0  # waveguide width/height\n\nk_point = mp.Vector3(z=0.5)\n\n\ndef parallel_waveguide(s, xodd):\n    geometry = [\n        mp.Block(\n            center=mp.Vector3(-0.5 * (s + a)),\n            size=mp.Vector3(a, a, mp.inf),\n            material=Si,\n        ),\n        mp.Block(\n            center=mp.Vector3(0.5 * (s + a)), size=mp.Vector3(a, a, mp.inf), material=Si",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 528,
+    "title": "NanoComp/meep: python/examples/extraction_eff_ldos.py",
+    "code": "\"\"\"Computes the extraction efficiency in 3D and cylindrical coordinates.\n\nVerifies that the extraction efficiency of a point dipole in a dielectric\nlayer above a lossless metallic ground plane computed in two different\ncoordinate systems agree.\n\"\"\"\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\nresolution = 80  # pixels/關m\ndpml = 0.5  # thickness of PML\ndair = 1.0  # thickness of air padding\nL = 6.0  # length of non-PML region\nn = 2.4  # refractive index of surrounding medium\nwvl = 1.0  # wavelength (in vacuum)\n\nfcen = 1 / wvl  # center frequency of source/monitor\n\n# ru",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 539,
+    "title": "NanoComp/meep: python/examples/disc_radiation_pattern.py",
+    "code": "\"\"\"Radiated flux of a lossless dielectric disc in cylindrical coordinates.\n\nTutorial Reference:\n\nhttps://meep.readthedocs.io/en/latest/Python_Tutorials/Near_to_Far_Field_Spectra/#radiation-pattern-of-a-disc-in-cylindrical-coordinates\n\"\"\"\n\nimport math\nfrom typing import Tuple\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\nRESOLUTION_UM = 100\nPML_UM = 0.5\nAIR_UM = 1.0\nDISC_RADIUS_UM = 1.2\nN_DISC = 2.4\nWAVELENGTH_UM = 1.0\nNUM_AZIMUTH = 50\nNUM_POLAR = 100\nFARFIELD_RADIUS_UM = 1e6 * WAVELENGTH_UM\nFIELD_DECAY_TOL = 1e-8\nFIELD_DECAY_PERIOD = 50\nGREENCYL_TOL = 1e-8\n\nfrequency ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 548,
+    "title": "NanoComp/meep: python/examples/planar_cavity_ldos.py",
+    "code": "# Computes the Purcell enhancement factor of an in-plane dipole in a planar\n# dielectric cavity with lossless metallic walls. The result is computed in\n# cylindrical and 3D coordinates and compared with the analytic result from:\n# I. Abram et al., IEEE J. Quantum Electronics, Vol. 34, pp. 71-76 (1998).\n\n# tutorial reference:\n# https://meep.readthedocs.io/en/latest/Python_Tutorials/Local_Density_of_States/#planar-cavity-with-lossless-metallic-walls\n\nfrom typing import Optional\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\n# Note: Meep may round the cell dimensions to a",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 554,
+    "title": "NanoComp/meep: python/examples/mode-decomposition.py",
+    "code": "import matplotlib.pyplot as plt\n\nimport meep as mp\n\nresolution = 25  # pixels/關m\n\nw1 = 1.0  # width of waveguide 1\nw2 = 2.0  # width of waveguide 2\nLw = 10.0  # length of waveguides 1 and 2\n\n# lengths of waveguide taper\nLts = [2**m for m in range(4)]\n\ndair = 3.0  # length of air region\ndpml_x = 6.0  # length of PML in x direction\ndpml_y = 2.0  # length of PML in y direction\n\nsy = dpml_y + dair + w2 + dair + dpml_y\n\nSi = mp.Medium(epsilon=12.0)\n\nboundary_layers = [mp.PML(dpml_x, direction=mp.X), mp.PML(dpml_y, direction=mp.Y)]\n\nlcen = 6.67  # mode wavelength\nfcen = 1 / lcen  # mode frequency\n\ns",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 559,
+    "title": "NanoComp/meep: python/examples/metasurface_lens.py",
+    "code": "import matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nresolution = 50  # pixels/關m\n\ndpml = 1.0  # PML thickness\ndsub = 2.0  # substrate thickness\ndpad = 2.0  # padding between grating and PML\n\nlcen = 0.5  # center wavelength\nfcen = 1 / lcen  # center frequency\ndf = 0.2 * fcen  # frequency width\n\nfocal_length = 200  # focal length of metalens\nspot_length = 100  # far field line length\nff_res = 10  # far field resolution (points/關m)\n\nk_point = mp.Vector3(0, 0, 0)\n\nglass = mp.Medium(index=1.5)\n\npml_layers = [mp.PML(thickness=dpml, direction=mp.X)]\n\nsymmetries = [mp.Mirror(mp.Y)]\n",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 562,
+    "title": "NanoComp/meep: python/examples/zone_plate.py",
+    "code": "\"\"\"Computes the diffraction spectra of a zone plate in cylindrical coords.\"\"\"\n\nimport math\n\nimport matplotlib.pyplot as plt\nimport meep as mp\nimport numpy as np\n\n\nresolution_um = 25\n\npml_um = 1.0\nsubstrate_um = 2.0\npadding_um = 2.0\nheight_um = 0.5\nfocal_length_um = 200\nscan_length_z_um = 100\nfarfield_resolution_um = 10\n\npml_layers = [mp.PML(thickness=pml_um)]\n\nwavelength_um = 0.5\nfrequency = 1 / wavelength_um\nfrequench_width = 0.2 * frequency\n\n# The number of zones in the zone plate.\n# Odd-numbered zones impart a ? phase shift and\n# even-numbered zones impart no phase shift.\nnum_zones = 25\n\n# ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 573,
+    "title": "NanoComp/meep: python/examples/polarization_grating.py",
+    "code": "# polarization grating from C. Oh and M.J. Escuti, Optics Letters, Vol. 33, No. 20, pp. 2287-9, 2008\n# note: reference uses z as the propagation direction and y as the out-of-plane direction; this script uses x and z, respectively\nimport math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\nresolution = 50  # pixels/關m\n\ndpml = 1.0  # PML thickness\ndsub = 1.0  # substrate thickness\ndpad = 1.0  # padding thickness\n\nk_point = mp.Vector3(0, 0, 0)\n\npml_layers = [mp.PML(thickness=dpml, direction=mp.X)]\n\nn_0 = 1.55\ndelta_n = 0.159\nepsilon_diag = mp.Matrix(\n    mp.Vector3(n_0**2",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 575,
+    "title": "NanoComp/meep: python/examples/metal-cavity-ldos.py",
+    "code": "import math\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\n\n\ndef metal_cavity(w):\n    resolution = 50\n    sxy = 2\n    dpml = 1\n    sxy += 2 * dpml\n    cell = mp.Vector3(sxy, sxy)\n\n    pml_layers = [mp.PML(dpml)]\n    a = 1\n    t = 0.1\n    geometry = [\n        mp.Block(mp.Vector3(a + 2 * t, a + 2 * t, mp.inf), material=mp.metal),\n        mp.Block(mp.Vector3(a, a, mp.inf), material=mp.air),\n    ]\n\n    geometry.append(\n        mp.Block(\n            center=mp.Vector3(a / 2), size=mp.Vector3(2 * t, w, mp.inf), material=mp.air\n        )\n    )\n\n    fcen = math.sqrt(0.5) / a\n   ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 591,
+    "title": "NanoComp/meep: python/examples/parallel-wvgs-mpb.py",
+    "code": "import matplotlib.pyplot as plt\nimport numpy as np\n\nimport meep as mp\nfrom meep import mpb\n\nresolution = 128  # pixels/關m\n\nSi = mp.Medium(index=3.45)\n\nsyz = 10\ngeometry_lattice = mp.Lattice(size=mp.Vector3(0, syz, syz))\n\nk_points = [mp.Vector3(0.5)]\n\na = 1.0  # waveguide width\n\n\ndef parallel_waveguide(s, yodd):\n    geometry = [\n        mp.Block(\n            center=mp.Vector3(0, -0.5 * (s + a), 0),\n            size=mp.Vector3(mp.inf, a, a),\n            material=Si,\n        ),\n        mp.Block(\n            center=mp.Vector3(0, 0.5 * (s + a), 0),\n            size=mp.Vector3(mp.inf, a, a),\n       ",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  },
+  {
+    "id": 592,
+    "title": "NanoComp/meep: python/examples/cavity-farfield.py",
+    "code": "import matplotlib\nimport numpy as np\n\nimport meep as mp\n\nmatplotlib.use(\"agg\")\nimport matplotlib.pyplot as plt\n\nresolution = 20  # pixels/關m\n\nfcen = 0.25  # pulse center frequency\ndf = 0.2  # pulse width (in frequency)\n\neps = 13  # dielectric constant of waveguide\nw = 1.2  # width of waveguide\nr = 0.36  # radius of holes\nd = 1.4  # defect spacing (ordinary spacing = 1)\nN = 3  # number of holes on either side of defect\n\ndpad = 32  # padding between last hole and PML edge\ndpml = 0.5 / (fcen - 0.5 * df)  # PML thickness (> half the largest wavelength)\nsx = 2 * (dpad + dpml + N) + d - 1  # size of",
+    "error": "TimeoutExpired: > 45s",
+    "status": "timeout"
+  }
+]

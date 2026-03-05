@@ -1,0 +1,101 @@
+﻿=== pattern_name 전체 목록 (앞 20개) ===
+  [1] plot_initial_layout
+       desc: 초기 레이아웃 시각화: source/monitor/design region 위치를 annotated plot으로 저장
+  [2] save_density_plot
+       desc: 설계 밀도 플롯: gray_r 컬러맵(0=SiO2/white, 1=Si/black), FOM/binarization 주석 포함
+  [3] create_field_animation_2d
+       desc: 2D FDTD 필드 전파 애니메이션: mp.Animate2D + to_mp4(), Ez 성분 (TE polarization, ODD_Z pari
+  [4] create_field_animation_3d
+       desc: 3D FDTD 필드 전파 애니메이션: XY slice at slab center, Ey 성분 (SOI slab TE-like mode)
+  [5] theoretical_te0_profile
+       desc: 이론적 TE0 모드 프로파일: 도파로 내부 cosine 분포, 대칭 (fundamental mode), peak=1 정규화
+  [6] theoretical_te1_profile
+       desc: 이론적 TE1 모드 프로파일: 도파로 내부 sine 분포, 반대칭 (first-order mode), peak=1 정규화
+  [7] compute_overlap_integral
+       desc: 정규화 overlap integral: |∫E_sim·E_ref* dy|² / (∫|E_sim|²dy·∫|E_ref|²dy), 반환값 0~1
+  [8] dft_field_monitor_3d
+       desc: Set up and extract DFT field monitor in 3D MEEP simulation for SOI slab waveguid
+  [9] plot_dft_mode_profiles
+       desc: Visualize DFT mode profiles from 3D simulation: (left) 2D |Ey|² heatmap on YZ pl
+  [10] plot_final_structure
+       desc: 최종 설계 구조 2-panel: (1) grayscale density, (2) binarized (threshold=0.5)
+  [11] setup_logging_mpi
+       desc: MPI-safe 로깅: mp.am_master()로 master process만 FileHandler+StreamHandler, 나머지 Null
+  [12] plot_convergence_4panel
+       desc: 4-panel convergence monitoring plot for adjoint optimization. Panel 1: FOM vs it
+  [13] compute_binarization
+       desc: 이진화 메트릭: mean(|2·x - 1|), 0=완전 그레이스케일, 1=완전 이진화
+  [14] find_minimum_feature_size
+       desc: distance_transform_edt 기반 최소 feature size: Si 영역과 SiO2(hole) 영역 각각 계산 후 min 반환
+  [15] get_beta_schedule_4phase
+       desc: 4-phase beta 스케줄: iter 1-20 beta=2.0 유지 → iter 21-50 선형 2→32 → iter 51-70 선형 32→
+  [16] apply_conic_filter
+       desc: Apply conic (cone-shaped) spatial filter to design variables for minimum feature
+  [17] apply_tanh_projection
+       desc: Apply tanh projection to binarize grayscale design variables toward 0/1 (Si/SiO2
+  [18] get_eroded_design
+       desc: 침식(erosion) 설계 반환: eta=0.75로 Si 영역 수축 (under-etch 시뮬레이션)
+  [19] get_dilated_design
+       desc: 팽창(dilation) 설계 반환: eta=0.25로 Si 영역 확장 (over-deposition 시뮬레이션)
+  [20] get_adaptive_eta
+       desc: beta에 따른 adaptive eta: 낮은 beta에서 ±2%, 높은 beta에서 ±3% (약 ±7~10nm 공차)
+
+=== 랜덤 샘플 5개 (전체 내용) ===
+
+--- id=50 ---
+  pattern_name : phc_holey_waveguide_bands
+  description  : PhC 도파로 밴드 구조: holey waveguide, k-point path, bandgap 확인
+  use_case     : PhC line defect 도파로 밴드 계산. k_points 경로 설정, run_yodd_zeven
+  author_repo  : meep_examples/id_338/holey-wvg-bands.py
+  code_snippet : # Meep Tutorial: Hz-polarized transmission and reflection through a cavity
+# formed by a periodic sequence of holes in a dielectric waveguide,
+# with ...
+
+--- id=108 ---
+  pattern_name : output_directory_structure
+  description  : Standard output directory structure for MEEP inverse design projects. Root: results_stage1_grayscale/{timestamp_dir}/. Subdirs: design_iterations/ (per-iter density plots), validation/ (field animation, mode profiles, DFT fields), validation/fields/ (individual field component PNGs), validation/mode_decomposition/ (JSON + bar chart). File naming: design_iter{N:03d}.png, field_propagation.mp4, history.json. 역설계 출력 디렉토리 구조: stage1/validation/fields/ 계층, 파일 명명 규칙.
+  use_case     : output directory structure inverse design, results directory MEEP, design_iterations directory, validation directory structure, field_propagation mp4 location, history json output dir, create output dirs MEEP adjoint, file naming convention design_iter, 출력 디렉토리 구조, 역설계 결과물 폴더, 파일 명명 규칙, 디렉토리 생성
+  author_repo  : jin/output_format_guide
+  code_snippet : from pathlib import Path
+from datetime import datetime
+
+def create_output_dirs(project_name: str, design_length: float,
+                       base_di...
+
+--- id=31 ---
+  pattern_name : straight_waveguide_simulation
+  description  : 직선 도파로 기본 FDTD: EigenModeSource, FluxRegion, get_fluxes, 투과율 측정
+  use_case     : 기본 도파로 투과율 측정. straight waveguide reference 시뮬레이션 템플릿
+  author_repo  : meep_examples/id_380/straight-waveguide.py
+  code_snippet : # -*- coding: utf-8 -*-
+
+# From the Meep tutorial: plotting permittivity and fields of a straight waveguide
+from __future__ import division
+
+import me...
+
+--- id=49 ---
+  pattern_name : mpb_bragg_bands
+  description  : MPB Bragg 거울 밴드 구조: ModeSolver, run_te, ky=0 band diagram
+  use_case     : 1D Bragg 거울 TE/TM 밴드 계산. mp.ModeSolver 기본 사용법
+  author_repo  : meep_examples/id_330/mpb_bragg.py
+  code_snippet : import meep as mp
+from meep import mpb
+
+# Compute the bands at the X point for a quarter-wave stack Bragg
+# mirror (this is the point that defines the...
+
+--- id=59 ---
+  pattern_name : oblique_plane_wave
+  description  : 경사 입사 평면파: 임의 각도 입사, k_point 회전, FDTD Bloch 경계
+  use_case     : 경사 입사 시뮬레이션. theta로 k_point 계산. Bloch 주기 경계와 조합
+  author_repo  : meep_examples/id_400/oblique-source.py
+  code_snippet : import meep as mp
+import numpy as np
+import matplotlib.pyplot as plt
+
+resolution = 50 # pixels/μm
+
+cell_size = mp.Vector3(14,14)
+
+pml_layers = [mp.PML...

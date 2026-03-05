@@ -1,0 +1,931 @@
+[
+  {
+    "pattern": "array_metadata",
+    "status": "ok",
+    "elapsed_s": 18.29,
+    "outputs": []
+  },
+  {
+    "pattern": "create_field_animation_2d",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "create_field_animation_3d",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_point_field_value",
+    "status": "ok",
+    "elapsed_s": 1.3,
+    "outputs": []
+  },
+  {
+    "pattern": "history_json_format",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "meep_visualization",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "output_directory_structure",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "plot_convergence_4panel",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "plot_dft_mode_profiles",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "plot_final_structure",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "plot_initial_layout",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "save_density_plot",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "setup_logging_mpi",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "EigenModeSource_basic",
+    "status": "ok",
+    "elapsed_s": 1.16,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "EigenModeSource_parameters",
+    "status": "ok",
+    "elapsed_s": 0.95,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adam_optimizer_topology_opt",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "angular_reflection_measurement",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "antenna_radiation_pattern",
+    "status": "ok",
+    "elapsed_s": 6.08,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "bend_flux_full",
+    "status": "ok",
+    "elapsed_s": 1.16,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "bent_waveguide_flux",
+    "status": "ok",
+    "elapsed_s": 0.81,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "binary_grating_diffraction",
+    "status": "ok",
+    "elapsed_s": 40.28,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "binary_grating_nanocomp",
+    "status": "ok",
+    "elapsed_s": 36.0,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "born_validity",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "compute_binarization",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "compute_overlap_integral",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "compute_poynting_vector",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "coupler_mode_decomposition",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires coupler.gds (not available)"
+  },
+  {
+    "pattern": "cylinder_cross_section",
+    "status": "ok",
+    "elapsed_s": 3.75,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "design_length_sweep",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "dft_energy_calculation",
+    "status": "ok",
+    "elapsed_s": 1.81,
+    "outputs": []
+  },
+  {
+    "pattern": "dft_field_monitor_3d",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "code fragment only - sim object not defined in snippet"
+  },
+  {
+    "pattern": "dft_fields_extraction",
+    "status": "ok",
+    "elapsed_s": 1.57,
+    "outputs": []
+  },
+  {
+    "pattern": "dft_monitor_2d_setup",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "dft_monitor_3d_soi_setup",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "directional_coupler",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires coupler.gds (not available)"
+  },
+  {
+    "pattern": "dispersive_eigenmode_source",
+    "status": "ok",
+    "elapsed_s": 0.01,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "eig_parity_2d_vs_3d",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "eigenfrequency_Q_factor",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "eigenmode_source_kpoints",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "faraday_rotation",
+    "status": "ok",
+    "elapsed_s": 0.64,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "field_functions_callback",
+    "status": "ok",
+    "elapsed_s": 2.03,
+    "outputs": []
+  },
+  {
+    "pattern": "find_minimum_feature_size",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "finite_grating",
+    "status": "ok",
+    "elapsed_s": 8.68,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "gaussian_beam_source",
+    "status": "ok",
+    "elapsed_s": 2.57,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "geometry_cylinder_ellipsoid",
+    "status": "ok",
+    "elapsed_s": 3.38,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_adaptive_eta",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_beta_schedule",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_beta_schedule_4phase",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_dilated_design",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "get_eroded_design",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "grating2d_triangular_lattice",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "simulation too slow (>300s)"
+  },
+  {
+    "pattern": "grating_phase_amplitude_map",
+    "status": "ok",
+    "elapsed_s": 10.7,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "harmonic_dilation",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "harmonic_erosion",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "holey_waveguide_cavity",
+    "status": "ok",
+    "elapsed_s": 3.63,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "material_dispersion_simulation",
+    "status": "ok",
+    "elapsed_s": 14.61,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "material_grid_adjoint",
+    "status": "ok",
+    "elapsed_s": 2.29,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "materials_library",
+    "status": "ok",
+    "elapsed_s": 1.13,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "mctp_core_parameters",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "metal_cavity_ldos",
+    "status": "ok",
+    "elapsed_s": 220.03,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "metasurface_lens",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "simulation too slow (>300s)"
+  },
+  {
+    "pattern": "mode_coeff_phase",
+    "status": "ok",
+    "elapsed_s": 1.08,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "mode_coefficients_test",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "mode_decomposition_waveguide",
+    "status": "ok",
+    "elapsed_s": 51.88,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "mpb_bragg_bands",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires mpb module (not installed in pmp env)"
+  },
+  {
+    "pattern": "mpb_tutorial_complete",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires mpb module (not installed in pmp env)"
+  },
+  {
+    "pattern": "mpi_parallel_simulation",
+    "status": "ok",
+    "elapsed_s": 1.05,
+    "outputs": []
+  },
+  {
+    "pattern": "near_to_far_field",
+    "status": "ok",
+    "elapsed_s": 10.03,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "oblique_plane_wave",
+    "status": "ok",
+    "elapsed_s": 42.7,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "oblique_source_periodic",
+    "status": "ok",
+    "elapsed_s": 39.41,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "optimization_5stage_workflow",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "perturbation_theory",
+    "status": "ok",
+    "elapsed_s": 28.79,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "phc_band_diagram_kpoints",
+    "status": "ok",
+    "elapsed_s": 7.01,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "phc_holey_waveguide_bands",
+    "status": "ok",
+    "elapsed_s": 8.39,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "plane_wave_source",
+    "status": "ok",
+    "elapsed_s": 0.46,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pml_boundary_conditions",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "polarization_grating",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "simulation too slow (>300s)"
+  },
+  {
+    "pattern": "reflectance_quartz",
+    "status": "ok",
+    "elapsed_s": 1.04,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "reflection_transmission_flux",
+    "status": "ok",
+    "elapsed_s": 0.99,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "ring_mode_overlap",
+    "status": "ok",
+    "elapsed_s": 11.89,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "ring_resonator_harminv",
+    "status": "ok",
+    "elapsed_s": 0.46,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "ring_resonator_modern",
+    "status": "ok",
+    "elapsed_s": 0.45,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "sio2_substrate_pml_geometry",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "solve_cw_steady_state",
+    "status": "ok",
+    "elapsed_s": 4.59,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "source_monitor_size_substrate",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "stop_when_fields_decayed",
+    "status": "ok",
+    "elapsed_s": 1.43,
+    "outputs": []
+  },
+  {
+    "pattern": "straight_waveguide_simulation",
+    "status": "ok",
+    "elapsed_s": 0.3,
+    "outputs": [
+      "output.png"
+    ],
+    "error": null
+  },
+  {
+    "pattern": "theoretical_mode_profiles",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "theoretical_te0_profile",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "theoretical_te1_profile",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "third_harmonic_generation",
+    "status": "ok",
+    "elapsed_s": 1.36,
+    "outputs": []
+  },
+  {
+    "pattern": "user_defined_material",
+    "status": "ok",
+    "elapsed_s": 1.25,
+    "outputs": []
+  },
+  {
+    "pattern": "verify_eigenmode_coupling",
+    "status": "ok",
+    "elapsed_s": 0.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "waveguide_crossing",
+    "status": "ok",
+    "elapsed_s": 1.0,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "waveguide_source_setup",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires h5topng (not installed)"
+  },
+  {
+    "pattern": "AdamOptimizer",
+    "status": "ok",
+    "elapsed_s": 1.2,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "AdaptiveBetaScheduler",
+    "status": "ok",
+    "elapsed_s": 1.2,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "BacktrackingLineSearch",
+    "status": "ok",
+    "elapsed_s": 1.11,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "LinearBetaScheduler",
+    "status": "ok",
+    "elapsed_s": 1.12,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "MappedSpaceMomentum",
+    "status": "ok",
+    "elapsed_s": 1.12,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "MsoptBetaScheduler",
+    "status": "ok",
+    "elapsed_s": 1.19,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "WarmRestarter",
+    "status": "ok",
+    "elapsed_s": 1.13,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adjoint_cylindrical",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "empty try block from MEEP package import structure"
+  },
+  {
+    "pattern": "adjoint_filter_source",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "relative imports from within MEEP adjoint package"
+  },
+  {
+    "pattern": "adjoint_filters_conic",
+    "status": "ok",
+    "elapsed_s": 1.14,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adjoint_jax_integration",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires jax, parameterized (not installed in pmp)"
+  },
+  {
+    "pattern": "adjoint_level_set_grating",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "requires running as complete script with external deps"
+  },
+  {
+    "pattern": "adjoint_mode_converter_opt",
+    "status": "ok",
+    "elapsed_s": 1.07,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adjoint_multilayer_optimization",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "module-level docstring-only code, no runnable logic"
+  },
+  {
+    "pattern": "adjoint_objective_functions",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "relative imports from within MEEP adjoint package"
+  },
+  {
+    "pattern": "adjoint_optimization_problem",
+    "status": "ok",
+    "elapsed_s": 1.03,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adjoint_solver_basics",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "empty try block from MEEP package import structure"
+  },
+  {
+    "pattern": "adjoint_solver_complete",
+    "status": "ok",
+    "elapsed_s": 1.13,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "adjoint_waveguide_bend_optimization",
+    "status": "ok",
+    "elapsed_s": 1.08,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "apply_conic_filter",
+    "status": "ok",
+    "elapsed_s": 1.06,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "apply_tanh_projection",
+    "status": "ok",
+    "elapsed_s": 1.12,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat1_2d_vs_3d_setup",
+    "status": "ok",
+    "elapsed_s": 1.16,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat1_basic_environment",
+    "status": "ok",
+    "elapsed_s": 1.12,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat2_geometry_layout",
+    "status": "ok",
+    "elapsed_s": 1.37,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat3_design_region",
+    "status": "ok",
+    "elapsed_s": 1.12,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat4_sources_monitors",
+    "status": "ok",
+    "elapsed_s": 1.13,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_cat6_output_results",
+    "status": "ok",
+    "elapsed_s": 1.13,
+    "outputs": [],
+    "error": null
+  },
+  {
+    "pattern": "pipeline_stage51_forward_simulation",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "depends on sim_fwd object from prior step"
+  },
+  {
+    "pattern": "pipeline_stage52_adjoint_simulation",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "depends on simulation state from prior step"
+  },
+  {
+    "pattern": "pipeline_stage53_gradient_map",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "depends on opt object from prior step"
+  },
+  {
+    "pattern": "pipeline_stage54_beta_scheduling",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "depends on x0 optimization state from prior step"
+  },
+  {
+    "pattern": "pipeline_stage55_filter",
+    "status": "skip",
+    "elapsed_s": 0,
+    "outputs": [],
+    "error": null,
+    "skip_reason": "depends on optimization state from prior step"
+  }
+]
