@@ -8,8 +8,11 @@ services:
     env_file:
       - .env
     volumes:
-      # DB는 호스트 폴더로 마운트 → 컨테이너 재시작해도 데이터 유지
+      # DB 디렉토리 — 컨테이너 재시작해도 데이터 유지
       - ./db:/app/db
+      # web/api 핫-리로드 — 로컬 편집이 컨테이너에 즉시 반영
+      - ./web:/app/web
+      - ./api:/app/api
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7860/api/status"]

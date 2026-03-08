@@ -640,8 +640,17 @@ function scrollToBottom() {
 function switchTab(tab) {
   document.getElementById('panel-chat').style.display     = tab === 'chat'     ? '' : 'none';
   document.getElementById('panel-diagnose').style.display = tab === 'diagnose' ? '' : 'none';
+  document.getElementById('panel-dict').style.display     = tab === 'dict'     ? '' : 'none';
   document.getElementById('tab-chat').classList.toggle('active',     tab === 'chat');
   document.getElementById('tab-diagnose').classList.toggle('active', tab === 'diagnose');
+  document.getElementById('tab-dict').classList.toggle('active',     tab === 'dict');
+  // Dictionary 탭 최초 클릭 시 iframe 로드 (lazy loading)
+  if (tab === 'dict') {
+    const frame = document.getElementById('dict-frame');
+    if (frame.src === 'about:blank' || frame.src === '') {
+      frame.src = '/dict';
+    }
+  }
 }
 
 /* ── 코드 진단 ──────────────────────────────────────────────────────────── */
