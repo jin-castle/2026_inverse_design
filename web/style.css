@@ -4,7 +4,7 @@
    Colors: Electric Cyan (#00D4FF) + Amber (#FFB800) on deep navy
    ══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,10 +23,10 @@
   --border-cyan:  rgba(0, 212, 255, 0.25);
 
   /* Text */
-  --text:         #d0e0f8;
-  --text-2:       #607098;
-  --text-3:       #2a3a60;
-  --text-mono:    #8ab4e0;
+  --text:         #fafafa;
+  --text-2:       #a1a1aa;
+  --text-3:       #52525b;
+  --text-mono:    #a1a1aa;
 
   /* Primary: electric cyan */
   --cyan:         #00D4FF;
@@ -60,9 +60,9 @@
   --radius-lg:    8px;
 
   /* Typography */
-  --font-mono:    'Share Tech Mono', 'JetBrains Mono', monospace;
-  --font-body:    'IBM Plex Sans', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif;
-  --font-code:    'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --font-mono:    'Fira Code', 'Cascadia Code', monospace;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  --font-code:    'Fira Code', 'Cascadia Code', 'Courier New', monospace;
 
   /* Grid line pattern for surfaces */
   --grid-line:    rgba(0, 212, 255, 0.025);
@@ -74,8 +74,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 13.5px;
-  line-height: 1.65;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
   height: 100vh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
@@ -162,11 +163,11 @@ pre, pre *, code, .hljs, .hljs * {
 }
 .logo-text { display: flex; flex-direction: column; gap: 1px; }
 .logo-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 13px;
-  color: var(--cyan);
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 8px var(--cyan-glow);
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0;
 }
 .logo-sub {
   font-size: 10px;
@@ -223,11 +224,11 @@ pre, pre *, code, .hljs, .hljs * {
 .sidebar-section { padding: 10px 14px; }
 .sidebar-section + .sidebar-section { border-top: 1px solid var(--border); }
 .section-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   color: var(--text-3);
   margin-bottom: 8px;
 }
@@ -255,11 +256,11 @@ pre, pre *, code, .hljs, .hljs * {
   letter-spacing: 0.01em;
 }
 .stat-value {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 13px;
-  color: var(--cyan);
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0;
   min-width: 40px;
   text-align: right;
 }
@@ -423,11 +424,11 @@ pre, pre *, code, .hljs, .hljs * {
 }
 .chat-logo-icon { display: none; }
 .chat-header-title {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--cyan);
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 6px var(--cyan-glow);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0;
 }
 .chat-header-sub {
   font-size: 10.5px;
@@ -466,22 +467,21 @@ pre, pre *, code, .hljs, .hljs * {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: var(--text-3);
+  color: var(--text-2);
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
   transition: all 0.15s;
   margin-bottom: -1px;
   position: relative;
 }
-.tab-btn:hover { color: var(--text-2); }
+.tab-btn:hover { color: var(--text); }
 .tab-btn.active {
-  color: var(--cyan);
-  border-bottom-color: var(--cyan);
-  text-shadow: 0 0 6px var(--cyan-glow);
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 /* ── Tab Panel ─────────────────────────────────────────────────────────── */
@@ -521,11 +521,11 @@ pre, pre *, code, .hljs, .hljs * {
 }
 .welcome-icon { display: none; }
 .welcome-title {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  color: var(--cyan);
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 16px var(--cyan-glow);
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0;
   margin-bottom: 10px;
 }
 .welcome-desc {
