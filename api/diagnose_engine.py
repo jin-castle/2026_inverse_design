@@ -84,7 +84,7 @@ def parse_error(code: str, error: str) -> dict:
 
 
 def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
-    """SQLite DB에서 에러 패턴 검색"""
+    """SQLite DB에서 에러 패턴 검색 (FTS + LIKE 혼합)"""
     results = []
     try:
         conn = sqlite3.connect(str(DB_PATH), timeout=10)
@@ -97,48 +97,115 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
             kws.add(t["description"])
         kws.update(error_info["meep_keywords"][:5])
         if error_info["last_error_line"]:
-            # 마지막 에러 줄에서 단어 추출
-            words = re.findall(r'\b\w+\b', error_info["last_error_line"])
+            words = re.findall(r'\b[A-Za-z]\w+\b', error_info["last_error_line"])
             kws.update(words[:5])
+        # 불필요한 단어 제거
+        kws -= {"", "None", "True", "False", "the", "a", "an", "and", "or", "in", "is", "to"}
 
-        # errors 테이블 검색
-        for kw in list(kws)[:8]:
-            rows = conn.execute("""
-                SELECT title, cause, solution, url, 'error' as type,
-                       1.0 as score
-                FROM errors
-                WHERE cause LIKE ? OR solution LIKE ? OR title LIKE ?
-                LIMIT 3
-            """, (f"%{kw}%", f"%{kw}%", f"%{kw}%")).fetchall()
-            for row in rows:
-                results.append({
-                    "type":     "error",
-                    "title":    row["title"],
-                    "cause":    row["cause"],
-                    "solution": row["solution"],
-                    "url":      row["url"] or "",
-                    "score":    0.7,
-                    "source":   "kb_sqlite",
-                })
+        # ── 1. errors FTS 검색 (빠른 전문 검색) ──────────────────────────────
+        fts_kws = [kw for kw in kws if len(kw) > 3][:5]
+        for kw in fts_kws:
+            try:
+                rows = conn.execute("""
+                    SELECT e.id, e.error_msg, e.category, e.cause, e.solution,
+                           e.source_url, 'error' as rtype
+                    FROM errors_fts ft
+                    JOIN errors e ON e.id = ft.rowid
+                    WHERE errors_fts MATCH ?
+                    LIMIT 4
+                """, (kw,)).fetchall()
+                for row in rows:
+                    sol = (row["solution"] or "").strip()
+                    if sol:  # solution 있는 것만
+                        results.append({
+                            "type":     "error",
+                            "title":    row["error_msg"] or row["category"] or "MEEP 오류",
+                            "cause":    row["cause"] or "",
+                            "solution": sol,
+                            "url":      row["source_url"] or "",
+                            "score":    0.75,
+                            "source":   "kb_fts",
+                        })
+            except Exception:
+                pass
 
-        # examples 테이블 검색 (코드에 있는 MEEP 함수 기반)
+        # ── 2. errors LIKE 검색 (FTS가 못 잡는 케이스 보완) ─────────────────
+        for kw in list(kws)[:6]:
+            if len(kw) < 4:
+                continue
+            try:
+                rows = conn.execute("""
+                    SELECT error_msg, category, cause, solution, source_url
+                    FROM errors
+                    WHERE (cause LIKE ? OR solution LIKE ? OR error_msg LIKE ?)
+                      AND solution IS NOT NULL AND solution != ''
+                    LIMIT 3
+                """, (f"%{kw}%", f"%{kw}%", f"%{kw}%")).fetchall()
+                for row in rows:
+                    results.append({
+                        "type":     "error",
+                        "title":    row["error_msg"] or row["category"] or "MEEP 오류",
+                        "cause":    row["cause"] or "",
+                        "solution": row["solution"] or "",
+                        "url":      row["source_url"] or "",
+                        "score":    0.65,
+                        "source":   "kb_sqlite",
+                    })
+            except Exception:
+                pass
+
+        # ── 3. sim_errors 테이블 검색 (검증된 오류-해결쌍) ──────────────────
+        try:
+            primary_type = error_info.get("primary_type", "")
+            if primary_type and primary_type != "Unknown":
+                rows = conn.execute("""
+                    SELECT error_type, error_message, fix_description, fixed_code,
+                           fix_applied, root_cause, context, pattern_name, fix_worked,
+                           source
+                    FROM sim_errors
+                    WHERE error_type = ? OR error_message LIKE ?
+                    ORDER BY fix_worked DESC
+                    LIMIT 4
+                """, (primary_type, f"%{primary_type}%")).fetchall()
+                for row in rows:
+                    fix_worked = row["fix_worked"] or 0
+                    verified_tag = "검증됨" if fix_worked else "참고용"
+                    fix_text = row["fix_description"] or row["fix_applied"] or row["root_cause"] or ""
+                    fix_code = row["fixed_code"] or ""
+                    results.append({
+                        "type":     "sim_error",
+                        "title":    f"[{verified_tag}] {row['error_type']}: {(row['error_message'] or '')[:60]}",
+                        "cause":    row["error_message"] or row["context"] or "",
+                        "solution": fix_text[:400],
+                        "code":     fix_code[:400],
+                        "url":      "",
+                        "score":    0.85 if fix_worked else 0.68,
+                        "source":   "sim_errors",
+                    })
+        except Exception:
+            pass
+
+        # ── 4. examples 테이블 검색 (MEEP 함수 기반) ─────────────────────────
         for kw in error_info["meep_keywords"][:5]:
-            rows = conn.execute("""
-                SELECT title, code, description, url, 'example' as type
-                FROM examples
-                WHERE code LIKE ? OR description LIKE ? OR title LIKE ?
-                LIMIT 2
-            """, (f"%{kw}%", f"%{kw}%", f"%{kw}%")).fetchall()
-            for row in rows:
-                results.append({
-                    "type":        "example",
-                    "title":       row["title"],
-                    "code":        row["code"] or "",
-                    "description": row["description"] or "",
-                    "url":         row["url"] or "",
-                    "score":       0.6,
-                    "source":      "kb_sqlite",
-                })
+            try:
+                rows = conn.execute("""
+                    SELECT title, code, description, source_repo
+                    FROM examples
+                    WHERE code LIKE ? OR description LIKE ? OR title LIKE ?
+                    LIMIT 2
+                """, (f"%{kw}%", f"%{kw}%", f"%{kw}%")).fetchall()
+                for row in rows:
+                    results.append({
+                        "type":        "example",
+                        "title":       row["title"] or "MEEP 예제",
+                        "code":        (row["code"] or "")[:400],
+                        "description": row["description"] or "",
+                        "url":         row["source_repo"] or "",
+                        "score":       0.55,
+                        "source":      "kb_sqlite",
+                    })
+            except Exception:
+                pass
 
         conn.close()
     except Exception as e:

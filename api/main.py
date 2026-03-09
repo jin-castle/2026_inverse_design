@@ -515,3 +515,122 @@ async def examples_list():
         ]
     except Exception as e:
         return []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# /api/diagnose  — 코드 + 에러 진단 엔드포인트
+# ══════════════════════════════════════════════════════════════════════════════
+
+class DiagnoseRequest(BaseModel):
+    code:  str = ""
+    error: str = ""
+    n:     int = 5
+
+
+@app.post("/api/diagnose")
+async def diagnose(req: DiagnoseRequest):
+    """
+    MEEP 코드 + 에러 메시지를 받아 진단 결과 반환.
+    1단계: 에러 파싱 + DB 검색 (FTS + sim_errors)
+    2단계: 벡터 검색
+    3단계: DB 부족 시 LLM 폴백
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(BASE / "api"))
+
+    from diagnose_engine import (
+        parse_error, search_db, search_vector,
+        extract_physics_context, build_physics_diagnosis_prompt,
+        diagnose as _diagnose_full,
+    )
+
+    code  = req.code.strip()
+    error = req.error.strip()
+
+    # ── 1. 에러 정보 파싱 ────────────────────────────────────────────────────
+    error_info = parse_error(code, error)
+    phys_ctx   = extract_physics_context(code)
+
+    # ── 2. DB 검색 ───────────────────────────────────────────────────────────
+    db_results = search_db(error_info, code, error, n=req.n)
+
+    # ── 3. 벡터 검색 ─────────────────────────────────────────────────────────
+    query_for_vector = f"{error_info['primary_type']} {error[:200]} {' '.join(error_info['meep_keywords'][:3])}"
+    vec_results = search_vector(
+        query_for_vector, n=3,
+        model=_cache.get("model") or _cache.get("model_1024"),
+        client=_cache.get("chroma"),
+    )
+
+    # 결합 + 중복 제거
+    seen = set()
+    combined = []
+    for r in db_results + vec_results:
+        key = (r.get("title","") + r.get("cause",""))[:80]
+        if key not in seen:
+            seen.add(key)
+            combined.append(r)
+    combined.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    top_score    = combined[0]["score"] if combined else 0
+    db_sufficient = top_score >= 0.65 and len(combined) >= 2
+
+    # ── 4. LLM 폴백 (DB 부족 시) ─────────────────────────────────────────────
+    llm_result = {"available": False, "answer": ""}
+    if not db_sufficient and (code or error):
+        try:
+            import anthropic, os
+            api_key = os.environ.get("ANTHROPIC_API_KEY","")
+            if api_key:
+                prompt = build_physics_diagnosis_prompt(
+                    code, error, error_info, combined[:3], phys_ctx
+                )
+                client_llm = anthropic.Anthropic(api_key=api_key)
+                msg = client_llm.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1500,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                llm_result = {
+                    "available": True,
+                    "answer": msg.content[0].text,
+                }
+        except Exception as e:
+            llm_result = {"available": False, "answer": "", "error": str(e)}
+
+    return {
+        "error_info":      error_info,
+        "suggestions":     combined[:req.n],
+        "db_sufficient":   db_sufficient,
+        "top_score":       round(top_score, 3),
+        "physics_context": phys_ctx,
+        "llm_result":      llm_result,
+        "db_count":        len(db_results),
+        "vec_count":       len(vec_results),
+    }
+
+
+# ── /api/stats/errors — 에러 커버리지 현황 ───────────────────────────────────
+
+@app.get("/api/stats/errors")
+async def stats_errors():
+    """sim_errors 테이블 커버리지 통계"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        total = conn.execute("SELECT COUNT(*) FROM sim_errors").fetchone()[0]
+        verified = conn.execute("SELECT COUNT(*) FROM sim_errors WHERE fix_worked=1").fetchone()[0]
+        by_type = conn.execute(
+            "SELECT error_type, COUNT(*) as cnt FROM sim_errors GROUP BY error_type ORDER BY cnt DESC LIMIT 15"
+        ).fetchall()
+        by_source = conn.execute(
+            "SELECT source, COUNT(*) as cnt FROM sim_errors GROUP BY source"
+        ).fetchall()
+        conn.close()
+        return {
+            "total": total,
+            "verified": verified,
+            "by_type": [{"type": r[0], "count": r[1]} for r in by_type],
+            "by_source": [{"source": r[0], "count": r[1]} for r in by_source],
+        }
+    except Exception as e:
+        return {"error": str(e)}
