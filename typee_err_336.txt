@@ -1,0 +1,4 @@
+  File "/tmp/typee_336.py", line 151
+    Tflux =  t_flux[0]/input_flux[0
+                                 ^
+SyntaxError: '[' was never closed

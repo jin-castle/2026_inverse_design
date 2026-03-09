@@ -92,7 +92,7 @@ def _load_examples() -> list:
     rows = conn.execute(
         "SELECT id, title, code, description, tags, source_repo, author, "
         "file_path, created_at, result_images, result_stdout, "
-        "result_run_time, result_executed_at, result_status "
+        "result_run_time, result_executed_at, result_status, description_ko "
         "FROM examples "
         "ORDER BY CASE WHEN result_status='success' AND result_images IS NOT NULL AND result_images != '[]' THEN 0 ELSE 1 END, id DESC"
     ).fetchall()
@@ -116,6 +116,7 @@ def _load_examples() -> list:
             "result_run_time": r[11],
             "result_executed_at": (r[12] or "")[:19],
             "result_status": r[13] or "pending",
+            "description_ko": r[14] or "",
         })
     return result
 
@@ -288,6 +289,13 @@ def _build_examples_html(examples: list) -> str:
 
         if ex["desc"]:
             body += f'  <p class="entry-desc">{_e(ex["desc"][:300])}{"..." if len(ex["desc"]) > 300 else ""}</p>\n'
+
+        # 한국어 해설 토글
+        if ex.get("description_ko"):
+            body += f'''  <details class="toggle-block">
+    <summary>🇰🇷 한국어 해설 보기</summary>
+    <div class="ko-desc-box">{_e(ex["description_ko"])}</div>
+  </details>\n'''
 
         # 코드 토글
         if ex["code"]:
@@ -666,6 +674,12 @@ pre[class*="language-"] {{
 .solution-box {{
   background: #0d2818; color: #86efac; padding: 10px 14px;
   border-radius: 6px; font-size: 13px; margin-top: 6px; white-space: pre-wrap;
+}}
+.ko-desc-box {{
+  background: #0d1a2b; color: #cbd5e1; padding: 14px 18px;
+  border-radius: 8px; font-size: 13px; margin-top: 8px; white-space: pre-wrap;
+  line-height: 1.8; border-left: 3px solid #6366f1;
+  font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
 }}
 .pending-note {{ color: #60a5fa; font-size: 12px; margin-top: 6px; padding: 4px 8px;
   background: #1e3a5f; border-radius: 6px; }}

@@ -1,0 +1,6 @@
+
+Elapsed run time = 0.0030 s
+Traceback (most recent call last):
+  File "/tmp/typee_544.py", line 23, in <module>
+    import PyMieScatt as ps
+ModuleNotFoundError: No module named 'PyMieScatt'

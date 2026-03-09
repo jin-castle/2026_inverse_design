@@ -1,0 +1,4 @@
+  File "/tmp/typee_395.py", line 86
+    sim = mp.Simulation(cell_size=cell,
+                       ^
+SyntaxError: '(' was never closed

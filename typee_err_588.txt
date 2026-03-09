@@ -1,0 +1,4 @@
+  File "/tmp/typee_588.py", line 219
+    rel_enh = np.absolute(ff_unitcell
+                         ^
+SyntaxError: '(' was never closed

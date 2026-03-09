@@ -1,0 +1,8 @@
+
+Elapsed run time = 1.0541 s
+/opt/conda/envs/mp/lib/python3.10/site-packages/meep/simulation.py:6227: RuntimeWarning: quiet has been deprecated; use the Verbosity class instead
+  warnings.warn(
+Traceback (most recent call last):
+  File "/tmp/typee_411.py", line 82, in <module>
+    opt = mpa.OptimizationProblem(
+TypeError: OptimizationProblem.__init__() got an unexpected keyword argument 'decay_fields'

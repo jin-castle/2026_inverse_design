@@ -157,31 +157,61 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
         # ── 3. sim_errors 테이블 검색 (검증된 오류-해결쌍) ──────────────────
         try:
             primary_type = error_info.get("primary_type", "")
-            if primary_type and primary_type != "Unknown":
-                rows = conn.execute("""
+            err_kws_for_sim = [kw for kw in kws if len(kw) > 4][:4]
+            # 에러 메시지 조각들로 LIKE 검색
+            err_msg_parts = re.findall(r'\b[A-Za-z][A-Za-z0-9_]{4,}\b', error or "")[:5]
+            all_search_kws = list(set(err_kws_for_sim + err_msg_parts))[:6]
+
+            rows = []
+            seen_sim = set()
+
+            # 3a. error_type 직접 매칭
+            if primary_type and primary_type not in ("Unknown", "General"):
+                rs = conn.execute("""
                     SELECT error_type, error_message, fix_description, fixed_code,
-                           fix_applied, root_cause, context, pattern_name, fix_worked,
-                           source
+                           fix_applied, root_cause, context, pattern_name, fix_worked, source
+                    FROM sim_errors WHERE error_type = ?
+                    ORDER BY fix_worked DESC LIMIT 3
+                """, (primary_type,)).fetchall()
+                for r in rs:
+                    k = (r["error_type"] + r["error_message"])[:60]
+                    if k not in seen_sim:
+                        seen_sim.add(k); rows.append(r)
+
+            # 3b. 에러 메시지 키워드 LIKE 검색 (marl_auto, error_injector 포함)
+            for kw in all_search_kws:
+                if len(rows) >= 5:
+                    break
+                rs = conn.execute("""
+                    SELECT error_type, error_message, fix_description, fixed_code,
+                           fix_applied, root_cause, context, pattern_name, fix_worked, source
                     FROM sim_errors
-                    WHERE error_type = ? OR error_message LIKE ?
-                    ORDER BY fix_worked DESC
-                    LIMIT 4
-                """, (primary_type, f"%{primary_type}%")).fetchall()
-                for row in rows:
-                    fix_worked = row["fix_worked"] or 0
-                    verified_tag = "검증됨" if fix_worked else "참고용"
-                    fix_text = row["fix_description"] or row["fix_applied"] or row["root_cause"] or ""
-                    fix_code = row["fixed_code"] or ""
-                    results.append({
-                        "type":     "sim_error",
-                        "title":    f"[{verified_tag}] {row['error_type']}: {(row['error_message'] or '')[:60]}",
-                        "cause":    row["error_message"] or row["context"] or "",
-                        "solution": fix_text[:400],
-                        "code":     fix_code[:400],
-                        "url":      "",
-                        "score":    0.85 if fix_worked else 0.68,
-                        "source":   "sim_errors",
-                    })
+                    WHERE error_message LIKE ? OR fix_description LIKE ? OR root_cause LIKE ?
+                    ORDER BY fix_worked DESC LIMIT 3
+                """, (f"%{kw}%", f"%{kw}%", f"%{kw}%")).fetchall()
+                for r in rs:
+                    k = (r["error_type"] + r["error_message"])[:60]
+                    if k not in seen_sim:
+                        seen_sim.add(k)
+                        rows.append(r)
+
+            # rows → results 변환 (루프 밖에서 한 번만)
+            for row in rows:
+                fix_worked = row["fix_worked"] or 0
+                verified_tag = "검증됨" if fix_worked else "참고용"
+                fix_text = row["fix_description"] or row["fix_applied"] or row["root_cause"] or ""
+                fix_code = row["fixed_code"] or ""
+                source_label = row["source"] or "sim_errors"
+                results.append({
+                    "type":     "sim_error",
+                    "title":    f"[{verified_tag}] {row['error_type']}: {(row['error_message'] or '')[:60]}",
+                    "cause":    row["error_message"] or row["context"] or "",
+                    "solution": fix_text[:400],
+                    "code":     fix_code[:400],
+                    "url":      "",
+                    "score":    0.90 if fix_worked else 0.70,
+                    "source":   f"sim_errors:{source_label}",
+                })
         except Exception:
             pass
 
@@ -211,7 +241,8 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
     except Exception as e:
         pass
 
-    # 중복 제거 + 점수 정렬
+    # 점수 내림차순 정렬 후 중복 제거 (sim_errors score=0.90이 kb_fts score=0.75보다 앞에)
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
     seen = set()
     unique = []
     for r in results:

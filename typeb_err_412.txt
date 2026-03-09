@@ -1,0 +1,10 @@
+
+Elapsed run time = 1.3861 s
+/opt/conda/envs/mp/lib/python3.10/site-packages/meep/simulation.py:6227: RuntimeWarning: quiet has been deprecated; use the Verbosity class instead
+  warnings.warn(
+Traceback (most recent call last):
+  File "/tmp/typeb_412.py", line 56, in <module>
+    design_variables = mp.MaterialGrid(mp.Vector3(Nx,Ny),SiO2,Si,grid_type='U_SUM')
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/meep/geom.py", line 690, in __init__
+    raise ValueError(
+ValueError: Invalid grid_type: {'U_MIN': 0, 'U_PROD': 1, 'U_MEAN': 2, 'U_DEFAULT': 3}. Must be either U_MIN, U_PROD, U_MEAN, or U_DEFAULT

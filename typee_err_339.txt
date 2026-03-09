@@ -1,0 +1,62 @@
+     cylinder, center = (0,0,0)
+          radius 2, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (11.56,11.56,11.56)
+     cylinder, center = (0,0,0)
+          radius 1, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (1,1,1)
+-----------
+Initializing structure...
+time for choose_chunkdivision = 0.000174046 s
+Working in 2D dimensions.
+Computational cell is 16 x 16 x 0 with resolution 10
+     cylinder, center = (0,0,0)
+          radius 2, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (11.56,11.56,11.56)
+     cylinder, center = (0,0,0)
+          radius 1, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (1,1,1)
+time for set_epsilon = 0.0356848 s
+-----------
+creating output file "./typee_339-eps-000000.00.h5"...
+harminv0:, frequency, imag. freq., Q, |amp|, amplitude, error
+harminv0:, 0.11810192007592651, -0.000732154171670601, 80.65372338618664, 0.0034147736447937794, -0.003050519858326137-0.001534603414285293i, 1.0227744933792598e-05+0.0i
+harminv0:, 0.1471629012398445, -0.00023252842437182104, 316.4406709360527, 0.028642834842331745, 0.019303870830371266-0.02116063701237358i, 7.28480902232414e-07+0.0i
+harminv0:, 0.17524672531569008, -5.229859361801195e-05, 1675.443957400549, 0.007211757335887955, -0.0008130016072036997-0.0071657848319927895i, 1.9242154058387045e-07+0.0i
+run 0 finished at t = 400.0 (8000 timesteps)
+-----------
+Initializing structure...
+time for choose_chunkdivision = 0.000148058 s
+Working in 2D dimensions.
+Computational cell is 16 x 16 x 0 with resolution 10
+     cylinder, center = (0,0,0)
+          radius 2, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (11.56,11.56,11.56)
+     cylinder, center = (0,0,0)
+          radius 1, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (1,1,1)
+time for set_epsilon = 0.0504138 s
+-----------
+run 1 finished at t = 600.0 (12000 timesteps)
+     cylinder, center = (0,0,0)
+          radius 2, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (11.56,11.56,11.56)
+     cylinder, center = (0,0,0)
+          radius 1, height 1e+20, axis (0, 0, 1)
+          dielectric constant epsilon diagonal = (1,1,1)
+Normalizing field data...
+run 2 finished at t = 625.0 (12500 timesteps)
+Generating MP4...
+
+Elapsed run time = 15.0770 s
+/opt/conda/envs/mp/lib/python3.10/site-packages/meep/visualization.py:1469: UserWarning: Warning: The 'sim' argument in Animate2D is deprecated and has no effect. It will be removed in a future release.
+  warnings.warn(
+Traceback (most recent call last):
+  File "/tmp/typee_339.py", line 68, in <module>
+    Animate.to_mp4(5,filename)
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/meep/visualization.py", line 1763, in to_mp4
+    proc = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+  File "/opt/conda/envs/mp/lib/python3.10/subprocess.py", line 971, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/conda/envs/mp/lib/python3.10/subprocess.py", line 1863, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'

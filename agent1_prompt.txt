@@ -1,0 +1,65 @@
+﻿Read AGENT1_TASK.md carefully first.
+
+You are working in the meep-kb project for a photonics researcher (Jin).
+Your job: write Korean researcher-level explanations for 23 MEEP simulation examples that have result images.
+
+## Context
+- Project dir: C:\Users\user\projects\meep-kb
+- meep-kb container: meep-kb-meep-kb-1 (port 8765)
+- DB inside container: /app/db/knowledge.db
+- Example info: agent1_examples.json (23 examples with ids, titles, code)
+- meep docs: https://meep.readthedocs.io/en/master/
+
+## Steps
+
+### 1. Add description_ko column to examples table
+Run via docker exec:
+  docker exec meep-kb-meep-kb-1 python3 -c "import sqlite3; c=sqlite3.connect('/app/db/knowledge.db'); c.execute('ALTER TABLE examples ADD COLUMN description_ko TEXT'); c.commit(); print('OK')"
+(Ignore error if column already exists)
+
+### 2. For each example in agent1_examples.json:
+- Read the code to understand what physics is being simulated
+- Fetch relevant meep docs page if needed (use web_fetch)
+- Write Korean explanation with this structure:
+
+## [예제 제목]
+
+### 물리적 배경
+[What this simulation models, governing equations, why it matters in photonics research]
+
+### 시뮬레이션 세팅
+- 셀 크기, 해상도, PML 설정
+- 재료 정의 및 특성
+- 소스 타입과 물리적 의미
+
+### 핵심 MEEP API
+[Key MEEP functions used, what each parameter means]
+
+### 결과 해석
+[What the generated plot shows, physical meaning of the patterns]
+
+### 연구 활용
+[How this relates to SOI photonics / inverse design research, practical use cases]
+
+Be DETAILED — more thorough than the official docs. This is for a researcher who needs deep understanding.
+
+### 3. Save each explanation to DB:
+Use docker exec to run python3 that updates the DB:
+  UPDATE examples SET description_ko=? WHERE id=?
+
+### 4. Update dict_page.py to show descriptions in Examples tab
+In C:\Users\user\projects\meep-kb\api\dict_page.py, find the Examples tab HTML generation.
+Add a collapsible section showing description_ko when available.
+Use <details class="toggle-block"> for the toggle.
+
+### 5. Deploy
+  docker cp C:\Users\user\projects\meep-kb\api\dict_page.py meep-kb-meep-kb-1:/app/api/dict_page.py
+  docker restart meep-kb-meep-kb-1
+
+### 6. Notify when done
+  openclaw system event --text "Agent1 완료: 23개 예제 한국어 해설 작성 및 배포 완료" --mode now
+
+## Important
+- Scripts with Korean text: always write to file first, then docker cp. Never pipe Korean text via PowerShell heredoc (encoding corruption!).
+- Use docker exec for running Python inside containers.
+- The meep docs URL pattern: https://meep.readthedocs.io/en/master/Python_Tutorials/[topic]/

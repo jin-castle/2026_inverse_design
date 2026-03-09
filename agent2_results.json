@@ -1,0 +1,103 @@
+{
+  "summary": {
+    "total_failed_input": 82,
+    "fixed_and_submitted": 9,
+    "total_images_submitted": 11,
+    "skipped": 73
+  },
+  "successful_runs": {
+    "374": {
+      "title": "smartalecH/meep: python/examples/mode-decomposition.py",
+      "fix_type": "TypeC_MPI",
+      "fix": "Added standard header + removed __future__ import + MPI 4 cores",
+      "images": 1,
+      "notes": "mode decomposition reflectance plot"
+    },
+    "382": {
+      "title": "radial-planewave.py (np.complex_ fix)",
+      "fix_type": "TypeB",
+      "fix": "Replaced np.complex_ with np.complex128 (NumPy 2.0 removal)",
+      "images": 1,
+      "notes": "reflectance vs wavelength plot"
+    },
+    "391": {
+      "title": "metal-cavity-ldos.py (partial)",
+      "fix_type": "TypeC_MPI",
+      "fix": "Added standard header + removed __future__ import + MPI 4 cores",
+      "images": 1,
+      "notes": "partial run - first w value completed"
+    },
+    "406": {
+      "title": "parallel-wvgs-mpb.py",
+      "fix_type": "TypeC_MPI",
+      "fix": "Reduced MPB resolution 128→32 + MPI 4 cores",
+      "images": 1,
+      "notes": "coupling coefficient vs separation distance"
+    },
+    "410": {
+      "title": "cavity_arrayslice.py",
+      "fix_type": "TypeB",
+      "fix": "Fixed get_array() API: positional Volume arg → keyword vol= argument",
+      "images": 1,
+      "notes": "1D and 2D Hz field slices"
+    },
+    "521": {
+      "title": "cyl-wvg-azimuthal-modes.py (argparse bypass)",
+      "fix_type": "TypeB",
+      "fix": "Bypassed argparse, set dipole_pol='x' and dipole_pos_r=0.1 as defaults",
+      "images": 1,
+      "notes": "dipole radiation pattern in cylindrical coordinates"
+    },
+    "563": {
+      "title": "ring.ipynb (np.complex_ fix)",
+      "fix_type": "TypeB",
+      "fix": "Replaced np.complex_ with np.complex128 + copy plt.savefig outputs to kb_results",
+      "images": 3,
+      "notes": "ring resonator: error convergence + Ez CW field + Ez DFT field"
+    },
+    "591": {
+      "title": "parallel-wvgs-mpb.py (newer version)",
+      "fix_type": "TypeC_MPI",
+      "fix": "Reduced MPB resolution 128→32 + MPI 4 cores",
+      "images": 1,
+      "notes": "coupling coefficient vs separation distance"
+    },
+    "595": {
+      "title": "cavity_arrayslice.py (newer version)",
+      "fix_type": "TypeB",
+      "fix": "Fixed get_array() API: positional Volume arg → keyword vol= argument",
+      "images": 1,
+      "notes": "1D and 2D Hz field slices"
+    }
+  },
+  "skipped_categories": {
+    "TypeD_missing_modules": {
+      "description": "Required Python modules not installed in container",
+      "examples": {
+        "329_499": "gdspy not available",
+        "332_393_502_577": "PyMieScatt not available",
+        "364_540": "mpb_tri_rods.py / mpb_diamond.py external files missing",
+        "596": "nlopt not available"
+      }
+    },
+    "TypeE_notebook_markdown": {
+      "description": "Jupyter notebooks with markdown/code mixed - SyntaxError from unquoted markdown",
+      "count": 33,
+      "ids": [336, 339, 340, 342, 349, 352, 358, 362, 368, 386, 388, 395, 397, 399, 403, 411, 507, 510, 511, 514, 522, 525, 533, 537, 544, 570, 572, 579, 581, 583, 588, 599, 601]
+    },
+    "TypeB_truncated": {
+      "description": "SyntaxError from truncated code in DB",
+      "ids": [269, 412, 428, 569, 597, 598]
+    },
+    "TypeC_too_slow": {
+      "description": "Timeout - simulation too slow even with MPI 4 cores (>2 min)",
+      "ids": [333, 341, 353, 375, 378, 381, 389, 400, 505, 513, 526, 528, 539, 548, 554, 559, 562, 573, 575, 592]
+    }
+  },
+  "environment_notes": {
+    "mpirun_path": "/usr/bin/mpirun (not /opt/conda/envs/mp/bin/mpirun)",
+    "numpy_version": "2.2.6 (np.complex_ removed, np.trapezoid available)",
+    "meep_api_changes": "get_array() component=kwarg is first positional arg in 1.31",
+    "missing_modules": ["gdspy", "PyMieScatt", "nlopt"]
+  }
+}

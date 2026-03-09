@@ -1,0 +1,10 @@
+
+Elapsed run time = 0.6628 s
+Traceback (most recent call last):
+  File "/tmp/typee_599.py", line 21, in <module>
+    import meep.adjoint as mpa
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/meep/adjoint/__init__.py", line 13, in <module>
+    from .optimization_problem import OptimizationProblem
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/meep/adjoint/optimization_problem.py", line 5, in <module>
+    from autograd import grad, jacobian
+ModuleNotFoundError: No module named 'autograd'

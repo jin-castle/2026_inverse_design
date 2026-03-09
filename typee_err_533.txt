@@ -1,0 +1,4 @@
+  File "/tmp/typee_533.py", line 71
+    Animate.to_mp4(10, fi
+                  ^
+SyntaxError: '(' was never closed

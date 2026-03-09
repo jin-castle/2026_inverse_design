@@ -1,0 +1,101 @@
+﻿Read AGENT2_TASK.md carefully first.
+
+You are working in the meep-kb project for a photonics researcher (Jin).
+Your job: analyze and fix failed MEEP simulation examples, then re-run them with MPI parallelism.
+
+## Context
+- Project dir: C:\Users\user\projects\meep-kb
+- meep-pilot-worker container: has MEEP 1.31.0, conda env 'mp'
+- meep-kb container: meep-kb-meep-kb-1
+- meep-kb API (from worker): http://meep-kb-meep-kb-1:7860
+- Failed examples info: agent2_failed.json
+- MPI: max 4 parallel simulations, each with 4 cores (16 cores total)
+  Command: docker exec meep-pilot-worker /opt/conda/envs/mp/bin/mpirun --allow-run-as-root -np 4 /opt/conda/envs/mp/bin/python3 /tmp/script.py
+
+## Analysis Steps
+
+### 1. Categorize failures from agent2_failed.json
+Categories:
+- Type A: Import/Module errors (ModuleNotFoundError, __file__ undefined)
+- Type B: Syntax/API errors (SyntaxError, AttributeError, wrong MEEP 1.31 API)
+- Type C: Timeout (runtime > 45s) — needs MPI
+- Type D: Data dependency (needs external files)
+- Type E: Skip (fundamentally broken, e.g., GUI-dependent)
+
+### 2. For each fixable example, create a fixed script
+Write the fixed script to a .py file (UTF-8), then docker cp to container.
+Every fixed script MUST include:
+
+`python
+# -*- coding: utf-8 -*-
+import matplotlib
+matplotlib.use('Agg')  # Must be before pyplot
+import matplotlib.pyplot as plt
+import sys, os
+
+# Fix __file__ issue
+if not hasattr(sys.modules['__main__'], '__file__'):
+    sys.modules['__main__'].__file__ = '/tmp/fixed_{id}.py'
+
+# Hook plt.show() to save instead
+_fig_count = [0]
+_orig_show = plt.show
+def _save_show(*args, **kwargs):
+    fname = f'/tmp/kb_results/fixed_{id}_{_fig_count[0]:02d}.png'
+    plt.savefig(fname, dpi=80, bbox_inches='tight')
+    _fig_count[0] += 1
+plt.show = _save_show
+
+# [corrected simulation code here]
+`
+
+### 3. Execute Strategy
+
+For Type A/B (quick fixes): run directly
+  docker exec meep-pilot-worker /opt/conda/envs/mp/bin/python3 /tmp/fixed_{id}.py
+
+For Type C (timeout): use MPI with 4 cores
+  docker exec meep-pilot-worker /opt/conda/envs/mp/bin/mpirun --allow-run-as-root -np 4 /opt/conda/envs/mp/bin/python3 /tmp/fixed_{id}.py
+
+Run max 4 scripts simultaneously (background), wait for all to finish before next batch.
+
+### 4. Submit results to meep-kb API
+For each successful run, submit results:
+
+`python
+# Write this as a Python file and docker cp it
+import requests, base64, json, os
+
+results_dir = '/tmp/kb_results'
+example_id = {id}
+images = []
+for f in sorted(os.listdir(results_dir)):
+    if f.startswith(f'fixed_{example_id}_'):
+        with open(f'{results_dir}/{f}', 'rb') as fp:
+            images.append(base64.b64encode(fp.read()).decode())
+
+resp = requests.post(
+    'http://meep-kb-meep-kb-1:7860/api/ingest/result',
+    json={'example_id': example_id, 'images': images, 'stdout': '...', 'status': 'success'}
+)
+print(resp.json())
+`
+
+### 5. Track progress
+Write a summary to C:\Users\user\projects\meep-kb\agent2_results.json:
+{
+  "fixed": [list of fixed example ids],
+  "skipped": [list with reasons],
+  "errors": [list of still-failing ids]
+}
+
+### 6. Notify when done
+  openclaw system event --text "Agent2 완료: Failed 예제 재실행 완료. 결과: agent2_results.json 참조" --mode now
+
+## Important Rules
+- Always write scripts to files, never pipe Korean/complex code via PowerShell heredoc
+- mpirun needs --allow-run-as-root flag in the container
+- Max 4 MPI processes per simulation (4 cores each = 16 total)
+- Timeout per script: 120 seconds
+- If a script fails after fix, mark as 'error' and move on
+- Focus on the most common failure patterns first for efficiency

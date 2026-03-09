@@ -1,0 +1,10 @@
+
+Elapsed run time = 0.0403 s
+Traceback (most recent call last):
+  File "/tmp/typee_368.py", line 23, in <module>
+    import PyMieScatt as ps
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/PyMieScatt/__init__.py", line 3, in <module>
+    from PyMieScatt.Mie import MieQ, Mie_ab, Mie_cd, RayleighMieQ, AutoMieQ, LowFrequencyMieQ, LowFrequencyMie_ab, AutoMie_ab, Mie_SD, ScatteringFunction, SF_SD, MieS1S2, MiePiTau, MatrixElements, MieQ_withDiameterRange, MieQ_withWavelengthRange, MieQ_withSizeParameterRange, Mie_Lognormal
+  File "/opt/conda/envs/mp/lib/python3.10/site-packages/PyMieScatt/Mie.py", line 5, in <module>
+    from scipy.integrate import trapz
+ImportError: cannot import name 'trapz' from 'scipy.integrate' (/opt/conda/envs/mp/lib/python3.10/site-packages/scipy/integrate/__init__.py)

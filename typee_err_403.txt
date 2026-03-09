@@ -1,0 +1,4 @@
+  File "/tmp/typee_403.py", line 152
+    rel_enh = np.absolute(ff_unitcell['Ez'])**2/
+                                                ^
+SyntaxError: invalid syntax

@@ -1,0 +1,6 @@
+
+Elapsed run time = 0.7430 s
+Traceback (most recent call last):
+  File "/tmp/typee_601.py", line 24, in <module>
+    import nlopt
+ModuleNotFoundError: No module named 'nlopt'

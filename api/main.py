@@ -389,6 +389,103 @@ class IngestErrorRequest(BaseModel):
     source_type: str = "simulation_log"
 
 
+# ── sim_errors 직접 저장 (MARL 자동 수정 결과 포함) ──────────────────────────
+
+class IngestSimErrorRequest(BaseModel):
+    error_type: str                        # "MPIError", "Divergence" 등
+    error_message: str                     # 실제 traceback/에러 메시지
+    original_code: str = ""               # 오류 발생 코드
+    fixed_code: str = ""                  # 수정된 코드
+    fix_description: str = ""            # 한국어 수정 설명
+    root_cause: str = ""                  # 근본 원인
+    context: str = ""                     # 추가 컨텍스트
+    fix_keywords: str = "[]"             # JSON 배열 문자열
+    pattern_name: str = ""               # 패턴/프로젝트 이름
+    source: str = "marl_auto"            # 데이터 출처
+    fix_worked: int = 1                   # 검증 여부 (1=확인됨)
+    project_id: str = ""
+    meep_version: str = ""
+
+
+@app.post("/api/ingest/sim_error")
+async def ingest_sim_error(req: IngestSimErrorRequest):
+    """
+    MARL 자동 수정 결과 + ErrorInjector + Solution Structurer 결과를
+    sim_errors 테이블에 직접 저장.
+    verified(fix_worked=1) 항목은 /api/diagnose에서 즉시 활용.
+    """
+    import uuid, datetime as dt
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        run_id = f"{req.source}_{uuid.uuid4().hex[:8]}"
+        conn.execute("""
+            INSERT INTO sim_errors
+              (run_id, project_id, error_type, error_message, meep_version,
+               context, root_cause, fix_applied, fix_worked,
+               fix_description, fix_keywords, pattern_name, source,
+               original_code, fixed_code, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            run_id,
+            req.project_id or "unknown",
+            req.error_type[:100],
+            req.error_message[:2000],
+            req.meep_version[:20] or "",
+            req.context[:500],
+            req.root_cause[:300],
+            (req.fix_description or req.fixed_code)[:300],
+            req.fix_worked,
+            req.fix_description[:1000],
+            req.fix_keywords[:500],
+            req.pattern_name[:200],
+            req.source[:50],
+            req.original_code[:5000],
+            req.fixed_code[:5000],
+            dt.datetime.now().isoformat(),
+        ))
+        row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    # ChromaDB 벡터 저장
+    chroma_ok = False
+    try:
+        import uuid as _uuid, datetime as _dt
+        client = _cache.get("chroma")
+        model  = _cache.get("model") or _cache.get("model_1024")
+        if client and model:
+            col  = client.get_or_create_collection("sim_errors_v1")
+            text = (
+                f"ERROR: {req.error_message[:500]}\n"
+                f"CAUSE: {req.root_cause[:200]}\n"
+                f"FIX: {req.fix_description[:400]}"
+            )
+            emb  = model.encode(text).tolist()
+            col.add(
+                ids=[f"sime_{row_id}_{_uuid.uuid4().hex[:6]}"],
+                embeddings=[emb],
+                documents=[text[:2000]],
+                metadatas=[{
+                    "error_type":  req.error_type,
+                    "source":      req.source,
+                    "fix_worked":  str(req.fix_worked),
+                    "created_at":  _dt.datetime.now().isoformat(),
+                }],
+            )
+            chroma_ok = True
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "id": row_id,
+        "chroma_ok": chroma_ok,
+        "message": f"sim_error 저장 완료 (id={row_id}, type={req.error_type}, verified={req.fix_worked})",
+    }
+
+
 @app.post("/api/ingest/error")
 async def ingest_error(req: IngestErrorRequest):
     """시뮬레이션 에러+해결책을 meep-kb에 저장 (SQLite + ChromaDB)"""
