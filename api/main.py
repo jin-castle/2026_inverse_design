@@ -9,11 +9,14 @@ import sys, os, time, sqlite3, pickle, json
 from pathlib import Path
 from typing import Optional, List, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # ── 경로 설정 ─────────────────────────────────────────────────────────────────
 BASE = Path(os.environ.get("APP_DIR", "/app"))
@@ -24,12 +27,30 @@ DB_PATH    = BASE / "db/knowledge.db"
 CHROMA_DIR = BASE / "db/chroma"
 GRAPH_PATH = BASE / "db/knowledge_graph_v2.pkl"
 
+# ── Ingest 인증 키 ────────────────────────────────────────────────────────────
+_INGEST_API_KEY = os.environ.get("INGEST_API_KEY", "")
+if not _INGEST_API_KEY:
+    print("[WARNING] INGEST_API_KEY 환경변수가 설정되지 않았습니다. /api/ingest/* 엔드포인트가 무인증 상태입니다.")
+
+def verify_ingest_key(x_ingest_key: str = Header(default="")):
+    """Ingest 엔드포인트 전용 API 키 검증 Dependency"""
+    if not _INGEST_API_KEY:
+        return  # 키 미설정 시 경고만 (로컬 개발 편의)
+    if x_ingest_key != _INGEST_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Ingest-Key header")
+
+# ── Rate Limiter ──────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
+
 # ── FastAPI 앱 ────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="MEEP-KB Hybrid RAG API",
     description="MEEP 지식베이스 검색 API (DB 직출력 + LLM 생성 하이브리드)",
     version="1.0.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,9 +109,7 @@ async def startup():
         se._graph  = _cache["graph"]
         print("[startup] ✅ search_executor 캐시 주입 완료")
     except Exception as e:
-        print(f"[startup] ⚠️ search_executor/semantic_search 주입 실패: {e}")
-    except Exception as e:
-        print(f"[startup] ⚠️ search_executor 주입 실패: {e}")
+        print(f"[startup] ⚠️ search_executor 캐시 주입 실패: {e}")
 
     _cache["ready"] = True
     print("[startup] 🚀 MEEP-KB 서버 준비 완료")
@@ -197,13 +216,15 @@ def _run_search(query: str, n: int = 5) -> dict:
 
 # ── 엔드포인트 ─────────────────────────────────────────────────────────────────
 @app.post("/api/search")
-async def search(req: SearchRequest):
+@limiter.limit("10/minute")
+async def search(request: Request, req: SearchRequest):
     """단순 검색 (히스토리 없음)"""
     return _run_search(req.query, req.n)
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+@limiter.limit("10/minute")
+async def chat(request: Request, req: ChatRequest):
     """대화형 검색 (히스토리 포함)"""
     # 히스토리를 쿼리에 컨텍스트로 추가 (최근 2턴)
     query = req.message
@@ -314,7 +335,7 @@ class IngestExampleRequest(BaseModel):
 
 
 @app.post("/api/ingest/example")
-async def ingest_example(req: IngestExampleRequest):
+async def ingest_example(req: IngestExampleRequest, _: None = Depends(verify_ingest_key)):
     """Jupyter 노트북 시뮬레이션 예제를 meep-kb에 저장 (SQLite + ChromaDB)"""
     import uuid, datetime as dt
 
@@ -408,7 +429,7 @@ class IngestSimErrorRequest(BaseModel):
 
 
 @app.post("/api/ingest/sim_error")
-async def ingest_sim_error(req: IngestSimErrorRequest):
+async def ingest_sim_error(req: IngestSimErrorRequest, _: None = Depends(verify_ingest_key)):
     """
     MARL 자동 수정 결과 + ErrorInjector + Solution Structurer 결과를
     sim_errors 테이블에 직접 저장.
@@ -487,7 +508,7 @@ async def ingest_sim_error(req: IngestSimErrorRequest):
 
 
 @app.post("/api/ingest/error")
-async def ingest_error(req: IngestErrorRequest):
+async def ingest_error(req: IngestErrorRequest, _: None = Depends(verify_ingest_key)):
     """시뮬레이션 에러+해결책을 meep-kb에 저장 (SQLite + ChromaDB)"""
     import uuid, datetime as dt
 
@@ -544,7 +565,7 @@ class IngestResultRequest(BaseModel):
 
 
 @app.post("/api/ingest/result")
-async def ingest_result(req: IngestResultRequest):
+async def ingest_result(req: IngestResultRequest, _: None = Depends(verify_ingest_key)):
     """run_examples.py가 실행한 결과를 DB + 이미지 파일로 저장"""
     import base64 as b64mod, datetime as dt
 
@@ -625,7 +646,8 @@ class DiagnoseRequest(BaseModel):
 
 
 @app.post("/api/diagnose")
-async def diagnose(req: DiagnoseRequest):
+@limiter.limit("5/minute")
+async def diagnose(request: Request, req: DiagnoseRequest):
     """
     MEEP 코드 + 에러 메시지를 받아 진단 결과 반환.
     1단계: 에러 파싱 + DB 검색 (FTS + sim_errors)

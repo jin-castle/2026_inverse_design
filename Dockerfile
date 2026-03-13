@@ -11,8 +11,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# sentence-transformers 모델 사전 다운로드 (빌드 시 캐시)
+# sentence-transformers 모델 사전 다운로드 (빌드 시 캐시 — 런타임 다운로드 제거)
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
 # 소스 코드 복사
 COPY agent/    ./agent/
@@ -21,9 +22,8 @@ COPY query/    ./query/
 COPY web/      ./web/
 COPY search_agent.py .
 
-# DB 파일 복사
+# DB 파일 복사 (knowledge_graph_v2.pkl은 docker-compose ./db 볼륨으로 관리)
 COPY db/knowledge.db           ./db/knowledge.db
-COPY db/knowledge_graph_v2.pkl ./db/knowledge_graph_v2.pkl
 COPY db/chroma/                ./db/chroma/
 
 # 환경 변수
