@@ -195,6 +195,17 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                         seen_sim.add(k)
                         rows.append(r)
 
+            # score 우선순위 체계 (소스별 신뢰도)
+            SCORE_BY_SOURCE = {
+                "verified_fix":      0.95,  # MEEP Docker 실행 검증
+                "marl_auto":         0.92,  # MARL 자동 수정 검증
+                "error_injector":    0.88,  # Docker 에러 확인
+                "github_structured": 0.72,  # LLM 구조화 요약
+                "github_issue":      0.65,  # GitHub 텍스트 참조
+                "kb_fts":            0.65,  # FTS 텍스트 검색
+                "err_file":          0.60,  # 에러 파일 텍스트
+            }
+
             # rows → results 변환 (루프 밖에서 한 번만)
             for row in rows:
                 fix_worked = row["fix_worked"] or 0
@@ -202,6 +213,10 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                 fix_text = row["fix_description"] or row["fix_applied"] or row["root_cause"] or ""
                 fix_code = row["fixed_code"] or ""
                 source_label = row["source"] or "sim_errors"
+                # 소스별 점수 적용
+                base_score = SCORE_BY_SOURCE.get(source_label, 0.70)
+                if not fix_worked:
+                    base_score = min(base_score, 0.70)  # 미검증은 최대 0.70
                 results.append({
                     "type":     "sim_error",
                     "title":    f"[{verified_tag}] {row['error_type']}: {(row['error_message'] or '')[:60]}",
@@ -209,7 +224,7 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                     "solution": fix_text[:400],
                     "code":     fix_code[:400],
                     "url":      "",
-                    "score":    0.90 if fix_worked else 0.70,
+                    "score":    base_score,
                     "source":   f"sim_errors:{source_label}",
                 })
         except Exception:
@@ -260,25 +275,34 @@ def search_vector(query: str, n: int = 3, model=None, client=None) -> list:
         return []
     try:
         embedding = model.encode([query])[0].tolist()
-        collection = client.get_collection("meep_kb")
-        res = collection.query(query_embeddings=[embedding], n_results=n)
         results = []
-        if res and res["documents"]:
-            for i, doc in enumerate(res["documents"][0]):
-                meta = res["metadatas"][0][i] if res.get("metadatas") else {}
-                dist = res["distances"][0][i] if res.get("distances") else 1.0
-                score = max(0, 1.0 - dist)
-                if score >= 0.25:
-                    results.append({
-                        "type":     meta.get("type", "unknown"),
-                        "title":    meta.get("title", ""),
-                        "cause":    meta.get("cause", ""),
-                        "solution": doc[:500],
-                        "url":      meta.get("url", ""),
-                        "score":    round(score, 3),
-                        "source":   "kb_vector",
-                    })
-        return results
+        seen_titles = set()
+        # 실제 존재하는 컬렉션 순서대로 시도
+        for coll_name in ["sim_errors_v1", "errors", "examples"]:
+            try:
+                collection = client.get_collection(coll_name)
+                res = collection.query(query_embeddings=[embedding], n_results=n)
+                if res and res["documents"]:
+                    for i, doc in enumerate(res["documents"][0]):
+                        meta = res["metadatas"][0][i] if res.get("metadatas") else {}
+                        dist = res["distances"][0][i] if res.get("distances") else 1.0
+                        score = max(0, 1.0 - dist)
+                        title = meta.get("title", "")
+                        if score >= 0.25 and title not in seen_titles:
+                            seen_titles.add(title)
+                            results.append({
+                                "type":     meta.get("type", "unknown"),
+                                "title":    title,
+                                "cause":    meta.get("cause", ""),
+                                "solution": doc[:500],
+                                "url":      meta.get("url", ""),
+                                "score":    round(score, 3),
+                                "source":   f"kb_vector:{coll_name}",
+                            })
+            except Exception:
+                continue
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:n]
     except Exception:
         return []
 
@@ -486,7 +510,7 @@ def llm_diagnose(code: str, error: str, db_results: list,
     try:
         import urllib.request, json
         body = json.dumps({
-            "model": "claude-haiku-4-5",
+            "model": "claude-sonnet-4-6",
             "max_tokens": 1500,
             "messages": [{"role": "user", "content": prompt}]
         }).encode()
