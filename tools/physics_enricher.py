@@ -294,6 +294,55 @@ def update_record(conn: sqlite3.Connection, row_id: int, parsed: dict):
     conn.commit()
 
 
+def enrich_pending(limit: int = 20, model: str = "haiku", dry_run: bool = False) -> dict:
+    """
+    physics_cause/code_cause가 없는 레코드를 LLM으로 채움.
+    kb_pipeline.py에서 직접 호출 가능한 함수.
+
+    Returns:
+        {total, success, failed, records: [{id, error_type, ...}]}
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("[ERROR] ANTHROPIC_API_KEY 환경변수가 없습니다.", file=sys.stderr)
+        return {"total": 0, "success": 0, "failed": 0, "records": []}
+
+    client = anthropic.Anthropic(api_key=api_key)
+    conn = sqlite3.connect(str(DB_PATH))
+
+    records = get_records(conn, limit)
+    result = {"total": len(records), "success": 0, "failed": 0, "records": []}
+
+    if dry_run:
+        print(f"\n[DRY-RUN] enrich_pending 대상: {len(records)}건")
+        for row in records:
+            print(f"  id={row['id']}, error_class={row['error_class']}, error_type={row['error_type']}")
+            print(f"    error_message={str(row['error_message'])[:80]}")
+            result["records"].append({"id": row["id"], "error_type": row.get("error_type")})
+        conn.close()
+        return result
+
+    for i, row in enumerate(records):
+        print(f"\n[enrich {i+1}/{len(records)}] id={row['id']}, error_type={row['error_type']}")
+        parsed = enrich_record(client, row, model, False)
+
+        if parsed:
+            update_record(conn, row["id"], parsed)
+            pc = parsed.get("physics_cause", "")
+            cc = parsed.get("code_cause", "")
+            print(f"  → physics_cause ({len(pc)}자): {pc[:80]}...")
+            print(f"  → code_cause ({len(cc)}자): {cc[:60]}...")
+            result["success"] += 1
+            result["records"].append({"id": row["id"], "status": "ok"})
+        else:
+            print(f"  → [SKIP] 파싱 실패")
+            result["failed"] += 1
+            result["records"].append({"id": row["id"], "status": "failed"})
+
+    conn.close()
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="MEEP 에러 물리 원인 LLM 자동 보강")
     parser.add_argument("--limit", type=int, default=None, help="처리할 최대 레코드 수")

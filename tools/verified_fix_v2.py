@@ -395,6 +395,71 @@ def process_record(record: dict, api_key: str, dry_run: bool = False) -> dict:
     return result
 
 
+def is_markdown_mixed(code: str) -> bool:
+    """코드에 마크다운이 혼재하는지 판별"""
+    if not code:
+        return False
+    lines = code.split("\n")
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            return True
+        if stripped.startswith("In [") or stripped.startswith("Out["):
+            return True
+        if stripped.startswith("## ") or stripped.startswith("# # "):
+            return True
+    return False
+
+
+def fix_pending(limit: int = 10, skip_markdown: bool = True) -> dict:
+    """
+    fix_worked=0 레코드를 LLM으로 수정 검증.
+    kb_pipeline.py에서 직접 호출 가능한 함수.
+
+    Returns:
+        {total, fixed, failed, skipped}
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("❌ ANTHROPIC_API_KEY 없음. .env 파일 확인 필요.")
+        return {"total": 0, "fixed": 0, "failed": 0, "skipped": 0}
+
+    records = get_unfixed_records(limit=limit)
+    result = {"total": len(records), "fixed": 0, "failed": 0, "skipped": 0}
+
+    if not records:
+        print("  처리할 레코드 없음.")
+        return result
+
+    for rec in records:
+        record_id = rec.get("id")
+        original_code = rec.get("original_code") or ""
+
+        # 마크다운 혼재 skip
+        if skip_markdown and is_markdown_mixed(original_code):
+            print(f"  ⏭ id={record_id}: 마크다운 혼재 코드 skip")
+            result["skipped"] += 1
+            continue
+
+        try:
+            r = process_record(rec, api_key=api_key, dry_run=False)
+            if r["status"] == "fixed":
+                result["fixed"] += 1
+            elif r["status"] in ("skip", "not_reproducible"):
+                result["skipped"] += 1
+            else:
+                result["failed"] += 1
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n⚠ 사용자 중단")
+            break
+        except Exception as e:
+            print(f"  ❌ id={record_id}: 예상치 못한 오류 - {e}")
+            result["failed"] += 1
+
+    return result
+
+
 def run_pipeline(limit: int = 10, dry_run: bool = False, record_id: int = None) -> list:
     """전체 파이프라인 실행"""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
