@@ -218,8 +218,34 @@ def _run_search(query: str, n: int = 5) -> dict:
 @app.post("/api/search")
 @limiter.limit("10/minute")
 async def search(request: Request, req: SearchRequest):
-    """단순 검색 (히스토리 없음)"""
-    return _run_search(req.query, req.n)
+    """단순 검색 (히스토리 없음) + 개념 섹션 포함"""
+    result = _run_search(req.query, req.n)
+
+    # 개념 감지 및 concept 섹션 추가
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(BASE / "api"))
+        from concept_detector import detect_concept, is_concept_question
+
+        detected = detect_concept(req.query)
+        if detected and is_concept_question(req.query):
+            conn = sqlite3.connect(str(DB_PATH), timeout=10)
+            row = conn.execute(
+                "SELECT name, name_ko, summary, demo_code FROM concepts WHERE name=?",
+                (detected,)
+            ).fetchone()
+            conn.close()
+            if row:
+                result["concept"] = {
+                    "matched": row[0],
+                    "name_ko": row[1],
+                    "summary": row[2],
+                    "demo_code": row[3],
+                }
+    except Exception:
+        pass  # concept 섹션 추가 실패해도 기본 검색 결과는 반환
+
+    return result
 
 
 @app.post("/api/chat")
@@ -764,6 +790,196 @@ async def diagnose(request: Request, req: DiagnoseRequest):
         "db_count":        len(db_results),
         "vec_count":       len(vec_results),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# /api/concept  — MEEP 개념 설명 엔드포인트
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ConceptRequest(BaseModel):
+    query: str          # "PML이 뭐야", "EigenmodeSource 설명"
+    include_code: bool = True
+    include_images: bool = True
+
+
+@app.post("/api/concept")
+@limiter.limit("30/minute")
+async def get_concept(request: Request, req: ConceptRequest):
+    """
+    MEEP 개념 질문에 개념 설명 + 데모 코드 + 실행 결과 반환.
+
+    질문 예시:
+    - "PML이 뭐야?"
+    - "EigenmodeSource 어떻게 써?"
+    - "resolution 얼마로 설정해야 해?"
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(BASE / "api"))
+    from concept_detector import detect_concept, get_concept_confidence
+
+    query = req.query.strip()
+
+    # 1. 개념 키워드 감지
+    detected = detect_concept(query)
+    confidence = get_concept_confidence(query, detected) if detected else 0.0
+
+    concept_row = None
+
+    # 2. concepts 테이블 FTS 검색
+    if detected:
+        try:
+            conn = sqlite3.connect(str(DB_PATH), timeout=10)
+            row = conn.execute(
+                """SELECT name, name_ko, aliases, category, difficulty,
+                   summary, explanation, physics_background, common_mistakes,
+                   related_concepts, demo_code, demo_description,
+                   result_stdout, result_images, result_executed_at, result_status,
+                   meep_version, doc_url
+                   FROM concepts WHERE name=?""",
+                (detected,)
+            ).fetchone()
+            conn.close()
+            if row:
+                concept_row = row
+        except Exception as e:
+            print(f"[get_concept] DB 검색 실패: {e}")
+
+    # 3. 키워드 미감지 또는 DB 없으면 FTS 검색
+    if not concept_row:
+        try:
+            conn = sqlite3.connect(str(DB_PATH), timeout=10)
+            # FTS 전문 검색
+            fts_rows = conn.execute(
+                """SELECT c.name, c.name_ko, c.aliases, c.category, c.difficulty,
+                   c.summary, c.explanation, c.physics_background, c.common_mistakes,
+                   c.related_concepts, c.demo_code, c.demo_description,
+                   c.result_stdout, c.result_images, c.result_executed_at, c.result_status,
+                   c.meep_version, c.doc_url
+                   FROM concepts c
+                   JOIN concepts_fts ON c.id = concepts_fts.rowid
+                   WHERE concepts_fts MATCH ?
+                   LIMIT 1""",
+                (query,)
+            ).fetchall()
+            conn.close()
+            if fts_rows:
+                concept_row = fts_rows[0]
+                if not detected:
+                    detected = concept_row[0]
+                    confidence = 0.75
+        except Exception as e:
+            print(f"[get_concept] FTS 검색 실패: {e}")
+
+    # 4. 개념 없으면 → LLM fallback
+    if not concept_row:
+        # docs 테이블 검색 후 LLM 생성
+        try:
+            import anthropic as _anth
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+            if api_key:
+                client_llm = _anth.Anthropic(api_key=api_key)
+                prompt = f"""당신은 MEEP FDTD 전문가입니다.
+다음 질문에 답하세요: {query}
+
+간결하고 명확하게 1~2단락으로 답변하세요. 수식은 LaTeX ($...$) 형식으로 작성하세요."""
+                msg = client_llm.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return {
+                    "matched_concept": None,
+                    "name_ko": None,
+                    "category": None,
+                    "difficulty": None,
+                    "summary": msg.content[0].text,
+                    "explanation": msg.content[0].text,
+                    "physics_background": None,
+                    "common_mistakes": [],
+                    "related_concepts": [],
+                    "demo_code": None if not req.include_code else None,
+                    "demo_description": None,
+                    "result_status": None,
+                    "result_images": [],
+                    "result_stdout": "",
+                    "doc_url": None,
+                    "confidence": 0.5,
+                    "source": "llm_fallback",
+                }
+        except Exception as e:
+            return {"error": f"개념을 찾지 못했습니다: {e}", "query": query}
+
+        return {"error": "해당 MEEP 개념을 찾지 못했습니다.", "query": query}
+
+    # 5. 응답 구성
+    r = concept_row
+    common_mistakes = []
+    try:
+        common_mistakes = json.loads(r[8]) if r[8] else []
+    except:
+        common_mistakes = [r[8]] if r[8] else []
+
+    related_concepts = []
+    try:
+        related_concepts = json.loads(r[9]) if r[9] else []
+    except:
+        related_concepts = [r[9]] if r[9] else []
+
+    result_images = []
+    try:
+        result_images = json.loads(r[13]) if r[13] else []
+    except:
+        result_images = []
+
+    return {
+        "matched_concept":  r[0],
+        "name_ko":         r[1],
+        "category":        r[3],
+        "difficulty":      r[4],
+        "summary":         r[5],
+        "explanation":     r[6],
+        "physics_background": r[7],
+        "common_mistakes": common_mistakes,
+        "related_concepts": related_concepts,
+        "demo_code":       r[10] if req.include_code else None,
+        "demo_description": r[11],
+        "result_status":   r[15] or "pending",
+        "result_images":   result_images if req.include_images else [],
+        "result_stdout":   r[12] or "",
+        "doc_url":         r[17],
+        "confidence":      round(confidence, 2),
+        "aliases":         json.loads(r[2]) if r[2] else [],
+        "meep_version":    r[16],
+        "source":          "db",
+    }
+
+
+@app.get("/api/concepts")
+async def list_concepts():
+    """등록된 MEEP 개념 목록 반환"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        rows = conn.execute(
+            """SELECT name, name_ko, category, difficulty, result_status,
+               LENGTH(summary) as has_summary, LENGTH(demo_code) as has_code
+               FROM concepts ORDER BY category, difficulty, name"""
+        ).fetchall()
+        conn.close()
+        return {
+            "total": len(rows),
+            "concepts": [
+                {
+                    "name": r[0], "name_ko": r[1],
+                    "category": r[2], "difficulty": r[3],
+                    "result_status": r[4],
+                    "has_summary": bool(r[5]),
+                    "has_code": bool(r[6]),
+                }
+                for r in rows
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e), "total": 0, "concepts": []}
 
 
 # ── /api/stats/errors — 에러 커버리지 현황 ───────────────────────────────────
