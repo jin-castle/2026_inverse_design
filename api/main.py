@@ -636,6 +636,36 @@ async def examples_list():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# /api/mpi-check  — MPI deadlock 사전 검토 엔드포인트
+# ══════════════════════════════════════════════════════════════════════════════
+
+class MpiCheckRequest(BaseModel):
+    code: str = ""
+
+
+@app.post("/api/mpi-check")
+@limiter.limit("60/minute")
+async def mpi_check(request: Request, req: MpiCheckRequest):
+    """
+    MEEP 코드에서 MPI deadlock 유발 가능 패턴을 사전 검토.
+    mpirun 실행 전에 호출하여 위험도와 권장 조치를 반환.
+
+    risk_level: none | low | medium | high
+    safe_to_run: false이면 반드시 코드 수정 후 실행
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(BASE / "api"))
+    from diagnose_engine import check_mpi_deadlock_risk
+
+    code = req.code.strip()
+    if not code:
+        return {"risk_level": "none", "safe_to_run": True, "issues": [], "recommendations": ["코드가 없습니다."]}
+
+    result = check_mpi_deadlock_risk(code)
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # /api/diagnose  — 코드 + 에러 진단 엔드포인트
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -646,7 +676,7 @@ class DiagnoseRequest(BaseModel):
 
 
 @app.post("/api/diagnose")
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def diagnose(request: Request, req: DiagnoseRequest):
     """
     MEEP 코드 + 에러 메시지를 받아 진단 결과 반환.
@@ -660,11 +690,17 @@ async def diagnose(request: Request, req: DiagnoseRequest):
     from diagnose_engine import (
         parse_error, search_db, search_vector,
         extract_physics_context, build_physics_diagnosis_prompt,
+        check_mpi_deadlock_risk,
         diagnose as _diagnose_full,
     )
 
     code  = req.code.strip()
     error = req.error.strip()
+
+    # ── 0. MPI deadlock 사전 검토 (코드 있을 때만) ──────────────────────────
+    mpi_check_result = None
+    if code:
+        mpi_check_result = check_mpi_deadlock_risk(code)
 
     # ── 1. 에러 정보 파싱 ────────────────────────────────────────────────────
     error_info = parse_error(code, error)
@@ -724,6 +760,7 @@ async def diagnose(request: Request, req: DiagnoseRequest):
         "top_score":       round(top_score, 3),
         "physics_context": phys_ctx,
         "llm_result":      llm_result,
+        "mpi_check":       mpi_check_result,
         "db_count":        len(db_results),
         "vec_count":       len(vec_results),
     }

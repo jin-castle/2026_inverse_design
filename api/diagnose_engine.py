@@ -178,7 +178,28 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                     if k not in seen_sim:
                         seen_sim.add(k); rows.append(r)
 
-            # 3b. 에러 메시지 키워드 LIKE 검색 (marl_auto, error_injector 포함)
+            
+            # 3a-2. sim_errors FTS search
+            if primary_type and primary_type not in ("Unknown", "General"):
+                try:
+                    fts_q = """
+                        SELECT s.error_type, s.error_message, s.fix_description,
+                               s.fixed_code, s.fix_applied, s.root_cause,
+                               s.context, s.pattern_name, s.fix_worked, s.source
+                        FROM sim_errors_fts ft
+                        JOIN sim_errors s ON s.id = ft.rowid
+                        WHERE sim_errors_fts MATCH ?
+                        ORDER BY s.fix_worked DESC LIMIT 5
+                    """
+                    for r in conn.execute(fts_q, (primary_type,)).fetchall():
+                        k = (r["error_type"] + (r["error_message"] or ""))[:60]
+                        if k not in seen_sim:
+                            seen_sim.add(k)
+                            rows.append(r)
+                except Exception:
+                    pass
+
+# 3b. 에러 메시지 키워드 LIKE 검색 (marl_auto, error_injector 포함)
             for kw in all_search_kws:
                 if len(rows) >= 5:
                     break
@@ -533,6 +554,168 @@ def llm_diagnose(code: str, error: str, db_results: list,
             }
     except Exception as e:
         return {"available": False, "reason": str(e)}
+
+
+def check_mpi_deadlock_risk(code: str) -> dict:
+    """
+    MEEP 코드에서 MPI deadlock 유발 가능 패턴을 사전 검토.
+    실행 전에 호출하여 deadlock 위험이 있으면 사용자에게 경고.
+
+    Returns:
+        {
+          "risk_level": "none" | "low" | "medium" | "high",
+          "issues": [...],      # 발견된 위험 패턴 목록
+          "safe_to_run": bool,  # True면 MPI 실행 안전
+          "recommendations": [...],  # 권장 조치
+        }
+    """
+    issues = []
+    recommendations = []
+
+    # ── 1. sys.exit() / os._exit() in non-rank-0 ─────────────────────────────
+    if re.search(r'\bsys\.exit\b|\bos\._exit\b|\bexit\(\)', code):
+        issues.append({
+            "pattern": "sys.exit() / os._exit() 감지",
+            "risk": "high",
+            "reason": "MPI 환경에서 일부 rank만 종료 시 나머지 rank가 MPI_Barrier에서 무한 대기 (deadlock)",
+            "fix": "sys.exit() 대신 `if mp.am_master(): sys.exit()` 또는 MPI_Finalize 후 종료 패턴 사용"
+        })
+
+    # ── 2. print() in all ranks (collective 아님, 단독 print는 안전하나 flush 문제) ─
+    # 실제 위험: print 후 MPI_Barrier 순서 어긋남
+    if re.search(r'mpirun|MPI_Comm_rank|mp\.comm_rank', code):
+        if re.search(r'\bprint\s*\(', code) and not re.search(r'mp\.am_master\(\)', code):
+            issues.append({
+                "pattern": "MPI 환경에서 모든 rank에서 print() 호출",
+                "risk": "low",
+                "reason": "stdout flush 타이밍 불일치로 출력 혼재 가능. 직접 deadlock 원인은 아니지만 디버깅 어려움",
+                "fix": "`if mp.am_master(): print(...)` 로 rank 0에서만 출력"
+            })
+
+    # ── 3. mp.Simulation 없이 mp 함수 호출 ──────────────────────────────────
+    if re.search(r'mpirun|from mpi4py', code):
+        if not re.search(r'mp\.Simulation\s*\(', code):
+            issues.append({
+                "pattern": "MPI 사용하지만 mp.Simulation 객체 없음",
+                "risk": "medium",
+                "reason": "MEEP MPI는 Simulation 객체 없이 collective 연산 호출 시 rank 불일치 발생 가능",
+                "fix": "Simulation 객체를 먼저 생성 후 MPI 연산 수행"
+            })
+
+    # ── 4. input() / stdin 읽기 ──────────────────────────────────────────────
+    if re.search(r'\binput\s*\(|\bsys\.stdin\b|\braw_input\b', code):
+        issues.append({
+            "pattern": "input() / sys.stdin 감지",
+            "risk": "high",
+            "reason": "MPI 환경에서 stdin 읽기는 rank 0만 stdin에 연결 → 나머지 rank deadlock",
+            "fix": "input() 제거. 파라미터는 argparse나 config 파일로 전달"
+        })
+
+    # ── 5. 파일 I/O를 모든 rank에서 동시에 ─────────────────────────────────
+    # 동일한 파일을 여러 rank가 쓰면 충돌
+    if re.search(r'open\s*\(.*["\']w["\']', code) and not re.search(r'mp\.am_master\(\)', code):
+        if re.search(r'mpirun|from mpi4py|mp\.comm_rank', code):
+            issues.append({
+                "pattern": "모든 rank에서 파일 쓰기 (write 모드)",
+                "risk": "medium",
+                "reason": "여러 MPI rank가 동일 파일에 쓰면 파일 충돌 또는 데이터 손상 가능",
+                "fix": "`if mp.am_master(): open(...)` 또는 rank별 파일명 분리"
+            })
+
+    # ── 6. Barrier 없는 collective 연산 (get_array 등) ──────────────────────
+    collective_ops = re.findall(
+        r'sim\.get_array|mp\.get_fluxes|sim\.get_eigenmode_coefficients|'
+        r'sim\.fields\.synchronize_magnetic_fields', code
+    )
+    if collective_ops:
+        # wait for fields decayed 없이 즉시 collective 호출 체크
+        if not re.search(r'stop_when_fields_decayed|run\(.*until', code):
+            issues.append({
+                "pattern": f"collective 연산 ({', '.join(set(collective_ops[:3]))}) 사전 동기화 없음",
+                "risk": "medium",
+                "reason": "필드 수렴 전 collective 연산 호출 시 rank간 타이밍 불일치로 deadlock 가능",
+                "fix": "stop_when_fields_decayed 또는 충분한 until 값으로 수렴 확인 후 get_array 호출"
+            })
+
+    # ── 7. try-except로 MPI collective 감싸기 ───────────────────────────────
+    # 일부 rank만 exception → 나머지 rank는 barrier에서 대기
+    if re.search(r'try\s*:', code):
+        try_blocks = re.findall(r'try\s*:.*?(?=try\s*:|$)', code, re.DOTALL)
+        for block in try_blocks[:5]:
+            collective_in_try = re.search(
+                r'sim\.run|sim\.get_array|mp\.get_fluxes|'
+                r'sim\.get_eigenmode_coefficients', block
+            )
+            if collective_in_try:
+                issues.append({
+                    "pattern": "try-except 안에 MPI collective 연산 (sim.run, get_array 등)",
+                    "risk": "high",
+                    "reason": "일부 rank에서 exception 발생 시 해당 rank는 except로 빠지고 나머지는 collective에서 무한 대기 → deadlock",
+                    "fix": "try 블록에서 MPI collective 연산 제거. 에러는 모든 rank가 동시에 처리하도록 설계"
+                })
+                break
+
+    # ── 8. mpirun 없이 mp.divide_parallel_processes ─────────────────────────
+    if re.search(r'mp\.divide_parallel_processes|mp\.merge_subgroup', code):
+        if not re.search(r'mp\.count_processors\(\)|mp\.my_rank\(\)', code):
+            issues.append({
+                "pattern": "divide_parallel_processes 사용 시 rank 수 확인 없음",
+                "risk": "medium",
+                "reason": "프로세스 수가 분할 그룹 수보다 적으면 deadlock",
+                "fix": "실행 전 `assert mp.count_processors() >= num_groups` 체크 추가"
+            })
+
+    # ── 9. sleep() in parallel context ──────────────────────────────────────
+    if re.search(r'time\.sleep|os\.system', code):
+        if re.search(r'mpirun|from mpi4py', code):
+            issues.append({
+                "pattern": "MPI 환경에서 time.sleep() 또는 os.system() 감지",
+                "risk": "low",
+                "reason": "rank별 sleep 시간 차이로 collective 연산 타이밍 불일치 발생 가능",
+                "fix": "sleep 대신 stop_when_fields_decayed 조건 사용. os.system()은 rank 0에서만 실행"
+            })
+
+    # ── 10. 무한 루프 (while True) + MPI collective ─────────────────────────
+    if re.search(r'while\s+True\s*:', code):
+        if re.search(r'sim\.run|sim\.get_array|mp\.get_fluxes', code):
+            issues.append({
+                "pattern": "while True 루프 내 MPI collective 연산",
+                "risk": "high",
+                "reason": "루프 종료 조건 불일치 시 일부 rank만 루프 탈출 → deadlock",
+                "fix": "루프 종료 조건을 모든 rank가 동시에 평가하도록 설계. mp.broadcast()로 종료 시그널 공유"
+            })
+
+    # ── 위험도 집계 ───────────────────────────────────────────────────────────
+    risk_levels = [i["risk"] for i in issues]
+    if "high" in risk_levels:
+        overall = "high"
+        safe_to_run = False
+    elif "medium" in risk_levels:
+        overall = "medium"
+        safe_to_run = True  # 실행은 가능하나 주의 필요
+    elif "low" in risk_levels:
+        overall = "low"
+        safe_to_run = True
+    else:
+        overall = "none"
+        safe_to_run = True
+
+    # 권장 조치
+    if overall == "high":
+        recommendations.append("[HIGH RISK] mpirun 실행 전 반드시 코드 수정 필요. deadlock 발생 시 강제 종료: `pkill -9 -f mpirun`")
+    if overall in ("high", "medium"):
+        recommendations.append("실행 시 타임아웃 설정 권장: `timeout 300 mpirun -np N python script.py`")
+        recommendations.append("deadlock 감지: 별도 터미널에서 `watch -n 5 'pgrep -a mpirun'`")
+    if not issues:
+        recommendations.append("[OK] MPI deadlock 위험 패턴 미발견. 안전하게 실행 가능")
+
+    return {
+        "risk_level":      overall,
+        "safe_to_run":     safe_to_run,
+        "issues":          issues,
+        "issue_count":     len(issues),
+        "recommendations": recommendations,
+    }
 
 
 def diagnose(code: str, error: str, n: int = 5,
