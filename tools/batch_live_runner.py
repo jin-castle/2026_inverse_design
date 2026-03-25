@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "api"))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from live_runner import run_code
-from error_collector import collect, migrate_db
+from error_collector import collect, collect_v2, migrate_db
 
 BASE = Path(__file__).parent.parent
 DB_PATH = BASE / "db" / "knowledge.db"
@@ -242,7 +242,7 @@ def run_batch(
             if result.T_value is not None:
                 print(f"     T = {result.T_value:.4f}")
 
-            # DB 저장
+            # DB 저장 (live_runs)
             lr_id = collect(
                 code=item["code"],
                 run_result=result,
@@ -250,6 +250,16 @@ def run_batch(
                 source_ref=ref,
             )
             print(f"     live_runs.id = {lr_id}")
+
+            # DB 저장 (sim_errors_v2 — 에러/물리이상 시 자동 저장)
+            v2_id = collect_v2(
+                code=item["code"],
+                run_result=result,
+                source="live_run",
+                source_ref=ref,
+            )
+            if v2_id and v2_id > 0:
+                print(f"     sim_errors_v2.id = {v2_id}")
 
             completed_refs.add(ref)
             save_checkpoint(completed_refs, stats)

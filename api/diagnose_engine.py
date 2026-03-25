@@ -216,8 +216,43 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                         seen_sim.add(k)
                         rows.append(r)
 
+            # ── 3b-NEW: sim_errors_v2 검색 (5계층 구조) ─────────────────────────────
+            try:
+                rows_v2 = conn.execute("""
+                    SELECT error_class, error_type, error_message, symptom,
+                           physics_cause, code_cause, root_cause_chain,
+                           fix_type, fix_description, code_diff, fix_worked, source
+                    FROM sim_errors_v2
+                    WHERE (error_type = ? OR error_message LIKE ? OR physics_cause LIKE ?)
+                      AND fix_worked = 1
+                    ORDER BY fix_worked DESC LIMIT 3
+                """, (primary_type, f"%{primary_type}%", f"%{primary_type}%")).fetchall()
+                for row in rows_v2:
+                    fix_text = row["fix_description"] or row["code_diff"] or ""
+                    cause_text = row["physics_cause"] or row["code_cause"] or row["error_message"] or ""
+                    source_label = row["source"] or "live_run"
+                    base_score = 0.98 if source_label == "live_run" else 0.95
+                    if not row["fix_worked"]:
+                        base_score = min(base_score, 0.70)
+                    results.append({
+                        "type":             "sim_error_v2",
+                        "title":            f"[v2:{row['error_class']}] {row['error_type']}: {(row['error_message'] or '')[:50]}",
+                        "cause":            cause_text[:300],
+                        "solution":         fix_text[:400],
+                        "code":             (row["code_diff"] or "")[:400],
+                        "symptom":          row["symptom"] or "",
+                        "fix_type":         row["fix_type"] or "",
+                        "root_cause_chain": row["root_cause_chain"] or "[]",
+                        "url":              "",
+                        "score":            base_score,
+                        "source":           f"sim_errors_v2:{source_label}",
+                    })
+            except Exception:
+                pass
+
             # score 우선순위 체계 (소스별 신뢰도)
             SCORE_BY_SOURCE = {
+                "live_run":          0.98,  # 신규 최고 등급 (live_run 실제 실행)
                 "verified_fix":      0.95,  # MEEP Docker 실행 검증
                 "marl_auto":         0.92,  # MARL 자동 수정 검증
                 "error_injector":    0.88,  # Docker 에러 확인
