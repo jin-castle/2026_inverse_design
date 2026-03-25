@@ -218,20 +218,73 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
 
             # ── 3b-NEW: sim_errors_v2 검색 (5계층 구조) ─────────────────────────────
             try:
-                rows_v2 = conn.execute("""
+                seen_v2 = set()
+                rows_v2 = []
+
+                # 3b-NEW-1: error_type 정확/LIKE 매칭 (파생 타입 포함: EigenMode_eig_band_zero 등)
+                rs = conn.execute("""
                     SELECT error_class, error_type, error_message, symptom,
                            physics_cause, code_cause, root_cause_chain,
                            fix_type, fix_description, code_diff, fix_worked, source
                     FROM sim_errors_v2
-                    WHERE (error_type = ? OR error_message LIKE ? OR physics_cause LIKE ?)
+                    WHERE (error_type = ? OR error_type LIKE ?)
                       AND fix_worked = 1
-                    ORDER BY fix_worked DESC LIMIT 3
-                """, (primary_type, f"%{primary_type}%", f"%{primary_type}%")).fetchall()
-                for row in rows_v2:
+                    ORDER BY fix_worked DESC LIMIT 4
+                """, (primary_type, f"{primary_type}%")).fetchall()
+                for r in rs:
+                    k = (r["error_type"] + (r["error_message"] or ""))[:60]
+                    if k not in seen_v2:
+                        seen_v2.add(k)
+                        rows_v2.append(r)
+
+                # 3b-NEW-2: error_message + physics_cause LIKE 검색 (마지막 에러줄 기반)
+                if len(rows_v2) < 3 and error_info.get("last_error_line"):
+                    last_err = error_info["last_error_line"][:50]
+                    rs2 = conn.execute("""
+                        SELECT error_class, error_type, error_message, symptom,
+                               physics_cause, code_cause, root_cause_chain,
+                               fix_type, fix_description, code_diff, fix_worked, source
+                        FROM sim_errors_v2
+                        WHERE (error_message LIKE ? OR physics_cause LIKE ? OR code_cause LIKE ?)
+                          AND fix_worked = 1
+                        ORDER BY fix_worked DESC LIMIT 3
+                    """, (f"%{last_err}%", f"%{last_err}%", f"%{last_err}%")).fetchall()
+                    for r in rs2:
+                        k = (r["error_type"] + (r["error_message"] or ""))[:60]
+                        if k not in seen_v2:
+                            seen_v2.add(k)
+                            rows_v2.append(r)
+
+                # 3b-NEW-3: MEEP 키워드 기반 검색
+                if len(rows_v2) < 2:
+                    for kw in error_info.get("meep_keywords", [])[:3]:
+                        if len(rows_v2) >= 4:
+                            break
+                        rs3 = conn.execute("""
+                            SELECT error_class, error_type, error_message, symptom,
+                                   physics_cause, code_cause, root_cause_chain,
+                                   fix_type, fix_description, code_diff, fix_worked, source
+                            FROM sim_errors_v2
+                            WHERE (physics_cause LIKE ? OR fix_description LIKE ?)
+                              AND fix_worked = 1
+                            LIMIT 2
+                        """, (f"%{kw}%", f"%{kw}%")).fetchall()
+                        for r in rs3:
+                            k = (r["error_type"] + (r["error_message"] or ""))[:60]
+                            if k not in seen_v2:
+                                seen_v2.add(k)
+                                rows_v2.append(r)
+
+                for row in rows_v2[:4]:
                     fix_text = row["fix_description"] or row["code_diff"] or ""
                     cause_text = row["physics_cause"] or row["code_cause"] or row["error_message"] or ""
                     source_label = row["source"] or "live_run"
-                    base_score = 0.98 if source_label == "live_run" else 0.95
+                    # 소스별 점수
+                    v2_score_map = {
+                        "live_run": 0.98, "error_injector": 0.95, "marl_auto": 0.94,
+                        "research_notes": 0.93, "verified_fix": 0.92,
+                    }
+                    base_score = v2_score_map.get(source_label, 0.90)
                     if not row["fix_worked"]:
                         base_score = min(base_score, 0.70)
                     results.append({
@@ -240,9 +293,12 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                         "cause":            cause_text[:300],
                         "solution":         fix_text[:400],
                         "code":             (row["code_diff"] or "")[:400],
+                        "physics_cause":    (row["physics_cause"] or "")[:500],  # 명시적 노출
+                        "code_cause":       (row["code_cause"] or "")[:300],
                         "symptom":          row["symptom"] or "",
                         "fix_type":         row["fix_type"] or "",
                         "root_cause_chain": row["root_cause_chain"] or "[]",
+                        "error_class":      row["error_class"] or "",
                         "url":              "",
                         "score":            base_score,
                         "source":           f"sim_errors_v2:{source_label}",
@@ -255,7 +311,7 @@ def search_db(error_info: dict, code: str, error: str, n: int = 5) -> list:
                 "live_run":          0.98,  # 신규 최고 등급 (live_run 실제 실행)
                 "verified_fix":      0.95,  # MEEP Docker 실행 검증
                 "marl_auto":         0.92,  # MARL 자동 수정 검증
-                "error_injector":    0.88,  # Docker 에러 확인
+                "error_injector":    0.93,  # 0.88→0.93 상향 (v2 구조로 풍부해짐, 2026-03-25)
                 "github_structured": 0.72,  # LLM 구조화 요약
                 "github_issue":      0.65,  # GitHub 텍스트 참조
                 "kb_fts":            0.65,  # FTS 텍스트 검색
