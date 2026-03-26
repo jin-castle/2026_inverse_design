@@ -39,11 +39,7 @@ def preprocess_code(code: str, name: str) -> str:
     if not has_matplotlib_use:
         lines = ["import matplotlib", "matplotlib.use('Agg')"] + lines
 
-    # 2. import meep.adjoint 제거 (autograd 없어서 crash)
-    lines = [l for l in lines if not re.match(r'^\s*import meep\.adjoint', l)
-             and not re.match(r'^\s*from meep\.adjoint', l)]
-    # mpa 사용 코드도 제거 (adjoint 관련 라인)
-    lines = [l for l in lines if 'mpa.' not in l]
+    # 2. (autograd 설치됨 — adjoint import 허용)
 
     # 3. import meep as mp 없으면 주입
     has_meep_import = any(
