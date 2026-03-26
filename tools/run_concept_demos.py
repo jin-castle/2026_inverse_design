@@ -63,11 +63,14 @@ def preprocess_code(code: str, name: str) -> str:
     # 3. plt.show() → pass
     code = re.sub(r'\bplt\.show\(\)', 'pass  # plt.show() disabled', code)
 
-    # 4. plt.savefig 없으면 추가
+    # 4. plt.savefig 경로를 /tmp/concept_{name}.png 로 통일
     safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
     output_path = f"/tmp/concept_{safe_name}.png"
-    if "plt.savefig" not in code and ("plt." in code or "matplotlib" in code):
-        code += f"\ntry:\n    import matplotlib.pyplot as plt\n    plt.savefig('{output_path}')\nexcept Exception:\n    pass\n"
+    if "plt.savefig" in code:
+        # 기존 savefig 경로를 표준 경로로 교체
+        code = re.sub(r"plt\.savefig\(['\"][^'\"]*['\"]\)", f"plt.savefig('{output_path}')", code)
+    elif "plt." in code or "matplotlib" in code:
+        code += f"\ntry:\n    import matplotlib.pyplot as plt\n    plt.tight_layout()\n    plt.savefig('{output_path}', dpi=100, bbox_inches='tight')\nexcept Exception:\n    pass\n"
 
     return code
 
@@ -116,19 +119,30 @@ def run_concept(name: str, code: str, dry_run: bool = False) -> dict:
             notes = (stderr or stdout)[:500]
             print(f"  [{name}] ❌ 실패: {notes[:120]}")
 
-        # 이미지 회수 (실패해도 OK)
+        # 이미지 회수
+        img_saved = None
         try:
             img_local = RESULTS_DIR / f"concept_{safe_name}.png"
             img_cp = subprocess.run(
                 ["docker", "cp", f"{DOCKER_WORKER}:{output_path}", str(img_local)],
                 capture_output=True, timeout=15
             )
-            if img_cp.returncode == 0:
-                print(f"  [{name}] 🖼️  이미지 저장: {img_local}")
+            if img_cp.returncode == 0 and img_local.stat().st_size > 500:
+                print(f"  [{name}] 🖼️  이미지 저장: {img_local.name} ({img_local.stat().st_size//1024}KB)")
+                img_saved = str(img_local)
+            else:
+                # output.png도 시도 (일부 코드가 output.png로 저장)
+                img_cp2 = subprocess.run(
+                    ["docker", "cp", f"{DOCKER_WORKER}:/tmp/output.png", str(img_local)],
+                    capture_output=True, timeout=10
+                )
+                if img_cp2.returncode == 0 and img_local.exists() and img_local.stat().st_size > 500:
+                    print(f"  [{name}] 🖼️  이미지 저장 (output.png): {img_local.name}")
+                    img_saved = str(img_local)
         except Exception:
             pass
 
-        return {"status": status, "notes": notes}
+        return {"status": status, "notes": notes, "image": img_saved}
 
     except subprocess.TimeoutExpired:
         print(f"  [{name}] ⏱️  타임아웃")
@@ -137,11 +151,15 @@ def run_concept(name: str, code: str, dry_run: bool = False) -> dict:
         tmp_path.unlink(missing_ok=True)
 
 
-def update_db(name: str, status: str, notes: str):
+def update_db(name: str, status: str, notes: str, image_path: str = None):
     conn = sqlite3.connect(str(DB_PATH))
+    safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    # 이미지 경로: /static/results/concept_{name}.png (웹에서 접근 가능한 경로)
+    img_url = f"/static/results/concept_{safe_name}.png" if image_path else None
     conn.execute(
-        "UPDATE concepts SET result_status=?, result_stdout=?, result_executed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE name=?",
-        (status, notes, name)
+        "UPDATE concepts SET result_status=?, result_stdout=?, result_images=?, "
+        "result_executed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE name=?",
+        (status, notes, img_url, name)
     )
     conn.commit()
     conn.close()
@@ -217,7 +235,7 @@ def main():
         notes = result.get("notes", "")
 
         if not args.dry_run:
-            update_db(name, status, notes)
+            update_db(name, status, notes, result.get("image"))
 
         results[status] = results.get(status, 0) + 1
 

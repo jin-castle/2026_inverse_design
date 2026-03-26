@@ -499,12 +499,14 @@ def _load_concepts() -> list:
     rows = conn.execute("""
         SELECT name, name_ko, aliases, category, difficulty,
                summary, explanation, demo_code, demo_description,
-               result_status, common_mistakes, related_concepts
+               result_status, common_mistakes, related_concepts,
+               result_images, result_stdout
         FROM concepts ORDER BY difficulty, category, name
     """).fetchall()
     conn.close()
     cols = ["name","name_ko","aliases","category","difficulty","summary","explanation",
-            "demo_code","demo_description","result_status","common_mistakes","related_concepts"]
+            "demo_code","demo_description","result_status","common_mistakes","related_concepts",
+            "result_images","result_stdout"]
     result = []
     for row in rows:
         d = dict(zip(cols, row))
@@ -572,6 +574,23 @@ def _build_concepts_html(concepts: list) -> str:
                 mistakes_html += f'<li>{_e(m)}</li>'
             mistakes_html += '</ul>'
 
+        # 실행 결과 이미지 + 설명
+        img_url  = c.get("result_images") or ""
+        stdout   = _e((c.get("result_stdout") or "")[:300])
+        result_html = ""
+        if img_url and status == "success":
+            result_html = f'''
+  <div class="concept-result-block">
+    <div class="concept-result-label">📊 실행 결과</div>
+    <div class="concept-result-inner">
+      <a href="{_e(img_url)}" target="_blank">
+        <img src="{_e(img_url)}" alt="{name} 실행 결과" class="concept-result-img"
+             onerror="this.parentElement.parentElement.style.display='none'"/>
+      </a>
+      {f'<p class="concept-result-desc">{demo_desc}</p>' if demo_desc else ""}
+    </div>
+  </div>'''
+
         demo_html = ""
         if demo and len(demo) > 20:
             demo_e = _e(demo)
@@ -585,7 +604,6 @@ def _build_concepts_html(concepts: list) -> str:
       </div>
       <pre class="language-python" style="margin:0!important;padding:14px!important;max-height:320px;overflow-y:auto;font-size:12px!important;"><code class="language-python">{demo_e}</code></pre>
     </div>
-    {f'<p style="font-size:12px;color:var(--muted);margin-top:6px;">{demo_desc}</p>' if demo_desc else ""}
   </details>'''
 
         body += f'''<div class="concept-card" id="concept-{name}" data-category="{category}" data-name="{name} {name_ko}">
@@ -597,6 +615,7 @@ def _build_concepts_html(concepts: list) -> str:
     <span style="margin-left:auto;font-size:13px;" title="{_e(status)}">{status_icon}</span>
   </div>
   <p class="entry-desc">{summary}</p>
+  {result_html}
   {f'<details class="toggle-block"><summary>📖 상세 설명</summary><div class="ko-desc-box">{expl}</div></details>' if expl else ""}
   {demo_html}
   {f'<details class="toggle-block"><summary>⚠️ 흔한 실수</summary>{mistakes_html}</details>' if mistakes_html else ""}
@@ -852,6 +871,43 @@ pre[class*="language-"] {{
   transition: border-color 0.15s;
 }}
 .concept-card:hover {{ border-color: var(--accent); }}
+
+/* 실행 결과 블록 */
+.concept-result-block {{
+  margin: 10px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+}}
+.concept-result-label {{
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(0,212,255,0.05);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.05em;
+}}
+.concept-result-inner {{
+  padding: 10px 12px;
+}}
+.concept-result-img {{
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 6px;
+  cursor: zoom-in;
+  display: block;
+  background: #0a0f1e;
+}}
+.concept-result-desc {{
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.6;
+  white-space: pre-line;
+}}
 
 /* ── 숨김 ── */
 .example-entry.hidden {{ display: none; }}
