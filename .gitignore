@@ -24,3 +24,10 @@ reports/
 
 # 그래프 v1 (v2만 사용)
 db/knowledge_graph.pkl
+
+db/knowledge.db
+db/knowledge_sync.db
+__pycache__/
+*.pyc
+.env
+db/results/
