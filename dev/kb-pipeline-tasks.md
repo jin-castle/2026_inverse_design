@@ -41,7 +41,7 @@
 ## Phase 4: 검증 및 완료
 
 - [x] **4-1.** `python -X utf8 tools/test_kb_pipeline.py` → ALL PASSED (23/23)
-- [ ] **4-2.** git add + commit
+- [x] **4-2.** git add + commit (71f67be)
 
 ## Acceptance Criteria
 

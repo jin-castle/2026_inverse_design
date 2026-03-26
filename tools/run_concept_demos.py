@@ -31,30 +31,43 @@ TIMEOUT = 90  # seconds
 
 
 def preprocess_code(code: str, name: str) -> str:
-    """데모 코드 전처리: matplotlib Agg 백엔드 삽입, plt.show() 처리"""
+    """데모 코드 전처리: meep import, matplotlib Agg, plt.show() 처리"""
     lines = code.splitlines()
-    
-    # matplotlib.use('Agg') 삽입
+
+    # 1. matplotlib.use('Agg') 맨 앞에 보장
     has_matplotlib_use = any("matplotlib.use" in l for l in lines)
-    if not has_matplotlib_use and any("matplotlib" in l or "plt" in l for l in lines):
-        # import matplotlib 다음에 삽입, 없으면 맨 앞에
+    if not has_matplotlib_use:
+        lines = ["import matplotlib", "matplotlib.use('Agg')"] + lines
+
+    # 2. import meep.adjoint 제거 (autograd 없어서 crash)
+    lines = [l for l in lines if not re.match(r'^\s*import meep\.adjoint', l)
+             and not re.match(r'^\s*from meep\.adjoint', l)]
+    # mpa 사용 코드도 제거 (adjoint 관련 라인)
+    lines = [l for l in lines if 'mpa.' not in l]
+
+    # 3. import meep as mp 없으면 주입
+    has_meep_import = any(
+        re.match(r'^\s*import meep', l) or re.match(r'^\s*from meep', l)
+        for l in lines
+    )
+    if not has_meep_import:
         new_lines = []
         inserted = False
         for line in lines:
             new_lines.append(line)
-            if not inserted and re.match(r'^import matplotlib\b', line):
-                new_lines.append("matplotlib.use('Agg')")
+            if not inserted and "matplotlib.use" in line:
+                new_lines.append("import meep as mp")
                 inserted = True
         if not inserted:
-            new_lines = ["import matplotlib", "matplotlib.use('Agg')"] + new_lines
+            new_lines = ["import meep as mp"] + new_lines
         lines = new_lines
 
     code = "\n".join(lines)
 
-    # plt.show() → pass (또는 제거)
+    # 3. plt.show() → pass
     code = re.sub(r'\bplt\.show\(\)', 'pass  # plt.show() disabled', code)
 
-    # plt.savefig 없으면 추가
+    # 4. plt.savefig 없으면 추가
     safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
     output_path = f"/tmp/concept_{safe_name}.png"
     if "plt.savefig" not in code and ("plt." in code or "matplotlib" in code):

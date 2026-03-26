@@ -1,0 +1,102 @@
+[
+  {
+    "error_type": "Divergence",
+    "root_cause": "시뮬레이션 해상도(resolution) 대비 Courant 숫자가 너무 커서 수치적 불안정성(Divergence)이 발생함.",
+    "fix_description": "Courant 조건을 만족하도록 시간 간격을 줄여야 합니다. Courant 파라미터를 기본값(0.5)보다 낮게 설정하여 안정성을 확보하세요.",
+    "fix_before": "sim = mp.Simulation(..., Courant=0.8)",
+    "fix_after": "sim = mp.Simulation(..., Courant=0.4)",
+    "fix_keywords": ["Courant", "stability", "resolution"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "MPIDeadlock",
+    "root_cause": "다중 코어(MPI) 환경에서 여러 프로세스가 동시에 동일한 HDF5 파일에 쓰기를 시도하여 파일 I/O 교착 상태(Deadlock)에 빠짐.",
+    "fix_description": "파일 입출력 작업은 마스터 프로세스에서만 수행되도록 제어해야 합니다. mp.am_master() 조건을 사용하여 파일 쓰기 충돌을 방지하세요.",
+    "fix_before": "np.save('data.npy', flux_data)",
+    "fix_after": "if mp.am_master(): np.save('data.npy', flux_data)",
+    "fix_keywords": ["MPI", "HDF5", "am_master"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "EigenMode",
+    "root_cause": "모드 소스(EigenModeSource)가 지정된 주파수 및 도파로 구조에서 요구하는 차수(band)의 유도 모드를 찾지 못함.",
+    "fix_description": "도파로의 두께나 굴절률 조건이 해당 모드를 지원하지 않거나, 탐색 주파수 대역이 잘못되었습니다. 모드 차수를 낮추거나 해상도를 높여보세요.",
+    "fix_before": "mp.EigenModeSource(..., eig_band=3)",
+    "fix_after": "mp.EigenModeSource(..., eig_band=1)",
+    "fix_keywords": ["EigenModeSource", "eig_band", "waveguide"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "ValueError",
+    "root_cause": "시뮬레이션 셀 크기(cell_size) 밖의 좌표에 소스(Source)나 모니터(Flux/Near2Far)가 배치됨.",
+    "fix_description": "소스나 모니터의 중심(center) 좌표가 반드시 시뮬레이션 셀 영역 내부에 위치하도록 좌표계를 수정해야 합니다.",
+    "fix_before": "center=mp.Vector3(10, 0, 0)",
+    "fix_after": "center=mp.Vector3(2, 0, 0)",
+    "fix_keywords": ["cell_size", "center", "boundaries"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "Normalization",
+    "root_cause": "정규화(Normalization) 시뮬레이션과 실제 시뮬레이션 간의 Flux 모니터 크기나 해상도가 일치하지 않아 데이터 로드에 실패함.",
+    "fix_description": "정규화 스크립트와 본 시뮬레이션 스크립트에서 FluxRegion의 크기, 중심 좌표, 해상도가 완벽하게 동일한지 확인하고 일치시켜야 합니다.",
+    "fix_before": "sim.load_flux('ref', flux_data)",
+    "fix_after": "# 정규화 run과 동일한 FluxRegion 및 해상도 적용 후 load_flux 실행",
+    "fix_keywords": ["load_flux", "FluxRegion", "resolution mismatch"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "RuntimeError",
+    "root_cause": "소스의 중심 주파수(frequency)가 0이거나 음수로 설정되어 전자기파 진동을 계산할 수 없음.",
+    "fix_description": "파장(wavelength)을 주파수(frequency)로 변환하는 과정에서 역수를 취하지 않았거나 잘못된 값을 입력했습니다. 양수의 주파수 값을 입력하세요.",
+    "fix_before": "fcen = -1.55",
+    "fix_after": "fcen = 1 / 1.55",
+    "fix_keywords": ["frequency", "wavelength", "ContinuousSource"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "PML",
+    "root_cause": "시뮬레이션 축의 두께가 PML 두께(dpml)보다 작거나 같아 PML이 정상적으로 흡수층 역할을 수행할 공간이 부족함.",
+    "fix_description": "PML이 적용되는 방향의 전체 셀 크기는 최소한 양쪽 PML 두께의 합보다 커야 합니다. 해당 축의 길이를 늘려주세요.",
+    "fix_before": "cell = mp.Vector3(2, 2, dpml)",
+    "fix_after": "cell = mp.Vector3(2, 2, 2 + 2 * dpml)",
+    "fix_keywords": ["dpml", "cell size", "absorber"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "Adjoint",
+    "root_cause": "Adjoint 최적화 과정에서 목적 함수(Objective Function) 연산 결과가 발산하여 NaN(Not a Number)이 반환됨.",
+    "fix_description": "Forward run에서 비정상적인 공진이 발생했거나 모니터링 영역의 필드 값이 0에 가까워 기울기 계산이 실패한 경우입니다. 시뮬레이션 시간을 늘리거나 타겟 값을 조정하세요.",
+    "fix_before": "return FOM",
+    "fix_after": "return np.nan_to_num(FOM, nan=0.0)",
+    "fix_keywords": ["NaN", "Objective Function", "gradient"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "ValueError",
+    "root_cause": "매질(Medium) 정의 시 유전율(epsilon) 값이 1보다 작아 물리적으로 불가능한 굴절률이 설정됨.",
+    "fix_description": "진공의 유전율은 1입니다. 특별한 메타물질이나 분산 매질(Drude/Lorentz)을 설계하는 것이 아니라면 epsilon 값은 1 이상이어야 합니다.",
+    "fix_before": "mp.Medium(epsilon=0.5)",
+    "fix_after": "mp.Medium(epsilon=1.5)",
+    "fix_keywords": ["Medium", "epsilon", "refractive index"],
+    "meep_version": null,
+    "verified": true
+  },
+  {
+    "error_type": "RuntimeError",
+    "root_cause": "시간 영역 시뮬레이션을 실행하기 전 sim.run()이 호출되지 않은 상태에서 필드 데이터나 Flux 데이터를 요청함.",
+    "fix_description": "시뮬레이션 객체 생성 후 반드시 sim.run()을 통해 시간 전진(Time-stepping)을 수행한 뒤 물리량 데이터를 추출해야 합니다.",
+    "fix_before": "flux = mp.get_fluxes(flux_obj)",
+    "fix_after": "sim.run(until=100)\nflux = mp.get_fluxes(flux_obj)",
+    "fix_keywords": ["sim.run", "get_fluxes", "time-stepping"],
+    "meep_version": null,
+    "verified": true
+  }
+]
