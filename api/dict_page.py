@@ -494,17 +494,161 @@ def _build_errors_html(errors: list) -> str:
     return body
 
 
+def _load_concepts() -> list:
+    conn = sqlite3.connect(str(DB_PATH), timeout=30)
+    rows = conn.execute("""
+        SELECT name, name_ko, aliases, category, difficulty,
+               summary, explanation, demo_code, demo_description,
+               result_status, common_mistakes, related_concepts
+        FROM concepts ORDER BY difficulty, category, name
+    """).fetchall()
+    conn.close()
+    cols = ["name","name_ko","aliases","category","difficulty","summary","explanation",
+            "demo_code","demo_description","result_status","common_mistakes","related_concepts"]
+    result = []
+    for row in rows:
+        d = dict(zip(cols, row))
+        try: d["aliases"] = json.loads(d["aliases"] or "[]")
+        except: d["aliases"] = []
+        try: d["common_mistakes"] = json.loads(d["common_mistakes"] or "[]")
+        except: d["common_mistakes"] = []
+        try: d["related_concepts"] = json.loads(d["related_concepts"] or "[]")
+        except: d["related_concepts"] = []
+        result.append(d)
+    return result
+
+
+def _build_concepts_html(concepts: list) -> str:
+    DIFF_BADGE = {
+        "basic":        '<span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">🟢 basic</span>',
+        "intermediate": '<span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">🟡 intermediate</span>',
+        "advanced":     '<span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">🔴 advanced</span>',
+    }
+    CATEGORIES = ["all","source","geometry","simulation","monitor","analysis","optimization","device","boundary"]
+
+    # filter bar
+    filter_btns = ''
+    for cat in CATEGORIES:
+        active = ' class="tag-filter active"' if cat == 'all' else ' class="tag-filter"'
+        label = f'전체 ({len(concepts)})' if cat == 'all' else cat
+        filter_btns += f'<button{active} onclick="filterConcepts(this,\'{cat}\')">{label}</button>\n'
+
+    body = f'''<div class="tab-toolbar">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+    <span style="font-size:13px;color:var(--muted)">총 {len(concepts)}개 개념</span>
+    <input id="concept-search" type="text" placeholder="개념 검색 (name / summary)..."
+           oninput="searchConcepts(this.value)"
+           style="background:var(--bg);border:1px solid var(--border);color:var(--text);
+                  border-radius:8px;padding:6px 12px;font-size:13px;width:300px;">
+  </div>
+  <div class="tag-filter-bar" id="concept-filter-bar">
+{filter_btns}  </div>
+</div>
+<div id="concepts-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;padding-bottom:40px;">\n'''
+
+    for c in concepts:
+        name     = _e(c["name"])
+        name_ko  = _e(c["name_ko"] or "")
+        category = _e(c["category"] or "")
+        diff     = c["difficulty"] or "basic"
+        summary  = _e(c["summary"] or "")
+        expl     = _e(c["explanation"] or "")
+        demo     = c["demo_code"] or ""
+        demo_desc= _e(c["demo_description"] or "")
+        status   = c["result_status"] or "pending"
+        status_icon = "✅" if status == "success" else "⏳"
+        diff_badge = DIFF_BADGE.get(diff, DIFF_BADGE["basic"])
+        cat_badge = f'<span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:10px;font-size:11px">{category}</span>'
+
+        related_tags = ""
+        for rc in (c["related_concepts"] or []):
+            rc_e = _e(rc)
+            related_tags += f'<a href="#concept-{rc_e}" onclick="scrollToConcept(\'{rc_e}\')" class="tag">{rc_e}</a> '
+
+        mistakes_html = ""
+        if c["common_mistakes"]:
+            mistakes_html = '<ul style="margin:4px 0 0 16px;font-size:12px;color:#fca5a5;">'
+            for m in c["common_mistakes"]:
+                mistakes_html += f'<li>{_e(m)}</li>'
+            mistakes_html += '</ul>'
+
+        demo_html = ""
+        if demo and len(demo) > 20:
+            demo_e = _e(demo)
+            demo_html = f'''
+  <details class="toggle-block">
+    <summary>💻 데모 코드</summary>
+    <div class="code-block" style="margin-top:6px;">
+      <div class="code-header">
+        <span>Python</span>
+        <button class="copy-btn" onclick="copyConceptCode(this)">복사</button>
+      </div>
+      <pre class="language-python" style="margin:0!important;padding:14px!important;max-height:320px;overflow-y:auto;font-size:12px!important;"><code class="language-python">{demo_e}</code></pre>
+    </div>
+    {f'<p style="font-size:12px;color:var(--muted);margin-top:6px;">{demo_desc}</p>' if demo_desc else ""}
+  </details>'''
+
+        body += f'''<div class="concept-card" id="concept-{name}" data-category="{category}" data-name="{name} {name_ko}">
+  <div class="entry-header" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px;">
+    <span class="entry-name">{name}</span>
+    {f'<span style="color:var(--muted);font-size:13px;">({name_ko})</span>' if name_ko else ""}
+    {diff_badge}
+    {cat_badge}
+    <span style="margin-left:auto;font-size:13px;" title="{_e(status)}">{status_icon}</span>
+  </div>
+  <p class="entry-desc">{summary}</p>
+  {f'<details class="toggle-block"><summary>📖 상세 설명</summary><div class="ko-desc-box">{expl}</div></details>' if expl else ""}
+  {demo_html}
+  {f'<details class="toggle-block"><summary>⚠️ 흔한 실수</summary>{mistakes_html}</details>' if mistakes_html else ""}
+  {f'<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;"><span style="font-size:11px;color:var(--muted);">관련:</span>{related_tags}</div>' if related_tags else ""}
+</div>\n'''
+
+    body += '</div>\n'
+
+    # JS for concepts tab
+    body += '''<script>
+function filterConcepts(btn, cat) {
+  document.querySelectorAll('#concept-filter-bar .tag-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.concept-card').forEach(el => {
+    if (cat === 'all') { el.style.display = ''; return; }
+    el.style.display = el.dataset.category === cat ? '' : 'none';
+  });
+}
+function searchConcepts(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('.concept-card').forEach(el => {
+    const t = el.dataset.name.toLowerCase() + ' ' + el.querySelector('.entry-desc').textContent.toLowerCase();
+    el.style.display = (!q || t.includes(q)) ? '' : 'none';
+  });
+}
+function scrollToConcept(name) {
+  const el = document.getElementById('concept-' + name);
+  if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>el.style.outline='',1500); }
+}
+function copyConceptCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => { btn.textContent='복사✅'; setTimeout(()=>btn.textContent='복사',1500); });
+}
+</script>\n'''
+
+    return body
+
+
 # ── 메인 HTML 생성 ─────────────────────────────────────────────────────────────
 def generate_html() -> str:
     patterns  = _load_patterns()
     examples  = _load_examples()
     errors    = _load_errors()
+    concepts  = _load_concepts()
     notebooks = _load_notebooks()
 
     pat_toc, pat_body = _build_patterns_html(patterns)
-    ex_body   = _build_examples_html(examples)
-    err_body  = _build_errors_html(errors)
-    nb_body   = _build_notebooks_html(notebooks)
+    ex_body       = _build_examples_html(examples)
+    err_body      = _build_errors_html(errors)
+    concepts_body = _build_concepts_html(concepts)
+    nb_body       = _build_notebooks_html(notebooks)
 
     n_success = sum(1 for e in examples if e["result_status"] == "success")
     n_nb_imgs = sum(nb["image_count"] for nb in notebooks)
@@ -701,6 +845,14 @@ pre[class*="language-"] {{
 /* ── 에러 탭 ── */
 .error-stats {{ font-size: 13px; color: var(--muted); margin-bottom: 16px; }}
 
+/* ── Concepts 탭 ── */
+.concept-card {{
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  transition: border-color 0.15s;
+}}
+.concept-card:hover {{ border-color: var(--accent); }}
+
 /* ── 숨김 ── */
 .example-entry.hidden {{ display: none; }}
 .category-section.all-hidden {{ display: none; }}
@@ -851,7 +1003,8 @@ pre[class*="language-"] {{
     Patterns: {len(patterns)} &nbsp;|&nbsp;
     Notebooks: {len(notebooks)} ({n_nb_imgs} 이미지) &nbsp;|&nbsp;
     Examples: {len(examples)} ({n_success} 실행완료) &nbsp;|&nbsp;
-    Errors: {len(errors)}
+    Errors: {len(errors)} &nbsp;|&nbsp;
+    Concepts: {len(concepts)}
   </div>
 </div>
 
@@ -860,6 +1013,7 @@ pre[class*="language-"] {{
   <button class="tab-btn" onclick="switchTab('notebooks', this)">📓 Notebooks ({len(notebooks)})</button>
   <button class="tab-btn" onclick="switchTab('examples', this)">📚 Examples ({len(examples)})</button>
   <button class="tab-btn" onclick="switchTab('errors', this)">❌ Errors ({len(errors)})</button>
+  <button class="tab-btn" onclick="switchTab('concepts', this)">💡 Concepts ({len(concepts)})</button>
 </div>
 
 <!-- ── Patterns 탭 ── -->
@@ -897,6 +1051,13 @@ pre[class*="language-"] {{
   </div>
 </div>
 
+<!-- ── Concepts 탭 ── -->
+<div id="tab-concepts" class="tab-pane">
+  <div id="main-content" class="full" style="padding:24px; width:100%;">
+    {concepts_body}
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -914,7 +1075,7 @@ function switchTab(name, btn) {{
 // 페이지 로드 시 hash 탭 복원
 window.addEventListener('load', () => {{
   const hash = window.location.hash.replace('#', '');
-  if (['patterns', 'examples', 'errors'].includes(hash)) {{
+  if (['patterns', 'examples', 'errors', 'concepts'].includes(hash)) {{
     const btn = document.querySelector(`.tab-btn[onclick*="${{hash}}"]`);
     if (btn) switchTab(hash, btn);
   }}
@@ -1042,7 +1203,7 @@ function renderMarkdown() {{
 window.addEventListener('load', () => {{
   // 탭 hash 복원
   const hash = window.location.hash.replace('#', '');
-  if (['patterns','notebooks','examples','errors'].includes(hash)) {{
+  if (['patterns','notebooks','examples','errors','concepts'].includes(hash)) {{
     const btn = document.querySelector(`.tab-btn[onclick*="${{hash}}"]`);
     if (btn) switchTab(hash, btn);
   }}
