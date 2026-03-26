@@ -307,6 +307,11 @@ function appendAIMessage(data, query_text = '') {
   // 본문
   let bodyHtml = '';
 
+  // ── 개념 카드 (concept 섹션이 있으면 DB 직출력 위에 표시) ──────────────
+  if (data.concept) {
+    bodyHtml += buildConceptCard(data.concept);
+  }
+
   if (isGen) {
     // 환각 경고
     bodyHtml += `
@@ -634,6 +639,109 @@ function escHtml(str) {
 function scrollToBottom() {
   const msgs = document.getElementById('messages');
   requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
+}
+
+/* ── 개념 카드 렌더링 ──────────────────────────────────────────────────── */
+function buildConceptCard(c) {
+  const diffColor = { basic: '#16a34a', intermediate: '#d97706', advanced: '#dc2626' };
+  const color = diffColor[c.difficulty] || '#6366f1';
+  const diffLabel = c.difficulty || 'basic';
+
+  // 헤더
+  let html = `
+<div class="concept-answer-card">
+  <div class="concept-answer-header">
+    <div class="concept-answer-title">
+      <span class="concept-answer-name">${escHtml(c.matched)}</span>
+      ${c.name_ko ? `<span class="concept-answer-ko">${escHtml(c.name_ko)}</span>` : ''}
+      <span class="concept-diff-badge" style="background:${color}">${diffLabel}</span>
+      <span class="concept-cat-badge">${escHtml(c.category || '')}</span>
+    </div>
+    <a class="concept-dict-link" href="/dict#concepts" onclick="openDict('concepts');return false;">
+      📚 사전에서 보기
+    </a>
+  </div>`;
+
+  // 요약
+  if (c.summary) {
+    html += `<p class="concept-answer-summary">${escHtml(c.summary)}</p>`;
+  }
+
+  // 상세 설명 (accordion)
+  if (c.explanation) {
+    html += `
+  <details class="concept-answer-details">
+    <summary>📖 상세 설명 보기</summary>
+    <div class="concept-answer-expl">${escHtml(c.explanation)}</div>
+  </details>`;
+  }
+
+  // 실행 결과 이미지 + 설명
+  if (c.result_images) {
+    html += `
+  <div class="concept-answer-result">
+    <div class="concept-answer-result-label">📊 실행 결과</div>
+    <a href="${escHtml(c.result_images)}" target="_blank">
+      <img src="${escHtml(c.result_images)}" alt="${escHtml(c.matched)} 실행 결과"
+           class="concept-answer-img"
+           onerror="this.closest('.concept-answer-result').style.display='none'"/>
+    </a>
+    ${c.demo_description ? `<p class="concept-answer-img-desc">${escHtml(c.demo_description)}</p>` : ''}
+  </div>`;
+  }
+
+  // 데모 코드
+  if (c.demo_code && c.demo_code.length > 20) {
+    html += `
+  <details class="concept-answer-details">
+    <summary>💻 데모 코드 보기</summary>
+    <div class="concept-code-wrap">
+      <button class="concept-copy-btn" onclick="copyConceptAnswerCode(this)">복사</button>
+      <pre><code class="language-python">${escHtml(c.demo_code)}</code></pre>
+    </div>
+  </details>`;
+  }
+
+  // 흔한 실수 TOP 5
+  if (c.common_mistakes && c.common_mistakes.length > 0) {
+    const top5 = c.common_mistakes.slice(0, 5);
+    const items = top5.map((m, i) =>
+      `<li><span class="mistake-num">${i+1}</span>${escHtml(m)}</li>`
+    ).join('');
+    html += `
+  <details class="concept-answer-details" open>
+    <summary>⚠️ 자주 하는 실수 TOP ${top5.length}</summary>
+    <ul class="concept-mistakes-list">${items}</ul>
+  </details>`;
+  }
+
+  // 관련 개념 태그
+  if (c.related_concepts && c.related_concepts.length > 0) {
+    const tags = c.related_concepts.map(r =>
+      `<button class="concept-related-tag" onclick="setQueryAndSend('${escHtml(r)}이 뭐야')">${escHtml(r)}</button>`
+    ).join('');
+    html += `<div class="concept-related-row"><span class="concept-related-label">관련 개념:</span>${tags}</div>`;
+  }
+
+  html += `</div>`;
+
+  // 코드 하이라이팅 (비동기 처리)
+  setTimeout(() => {
+    document.querySelectorAll('.concept-code-wrap pre code').forEach(b => {
+      if (!b.dataset.highlighted) hljs.highlightElement(b);
+    });
+  }, 50);
+
+  return html;
+}
+
+function copyConceptAnswerCode(btn) {
+  const code = btn.closest('.concept-code-wrap').querySelector('code');
+  if (!code) return;
+  navigator.clipboard.writeText(code.innerText).then(() => {
+    btn.textContent = '복사✅';
+    setTimeout(() => btn.textContent = '복사', 1500);
+  });
 }
 
 /* ── 탭 전환 ────────────────────────────────────────────────────────────── */

@@ -268,6 +268,62 @@ async def chat(request: Request, req: ChatRequest):
 
     result = _run_search(enriched_query, req.n)
 
+    # ── 개념 감지 → concept 섹션 추가 (풍부한 데이터) ──────────────────────
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(BASE / "api"))
+        from concept_detector import detect_concept, is_concept_question, get_concept_confidence
+
+        detected = detect_concept(query)
+        if detected:
+            confidence = get_concept_confidence(query, detected)
+            conn = sqlite3.connect(str(DB_PATH), timeout=10)
+            row = conn.execute("""
+                SELECT name, name_ko, summary, explanation, demo_code, demo_description,
+                       result_images, common_mistakes, related_concepts, difficulty, category
+                FROM concepts WHERE name=?
+            """, (detected,)).fetchone()
+
+            # FTS fallback — 이름이 DB에 없으면 full-text 검색
+            if not row:
+                row = conn.execute("""
+                    SELECT name, name_ko, summary, explanation, demo_code, demo_description,
+                           result_images, common_mistakes, related_concepts, difficulty, category
+                    FROM concepts
+                    WHERE LOWER(name) LIKE LOWER(?)
+                       OR LOWER(name_ko) LIKE LOWER(?)
+                    LIMIT 1
+                """, (f"%{detected}%", f"%{detected}%")).fetchone()
+
+            conn.close()
+            if row:
+                import json as _json
+                try:
+                    mistakes = _json.loads(row[7] or "[]")
+                except:
+                    mistakes = []
+                try:
+                    related = _json.loads(row[8] or "[]")
+                except:
+                    related = []
+
+                result["concept"] = {
+                    "matched":       row[0],
+                    "name_ko":       row[1],
+                    "summary":       row[2],
+                    "explanation":   row[3],
+                    "demo_code":     row[4],
+                    "demo_description": row[5],
+                    "result_images": row[6],
+                    "common_mistakes": mistakes,
+                    "related_concepts": related,
+                    "difficulty":    row[9],
+                    "category":      row[10],
+                    "confidence":    confidence,
+                }
+    except Exception as _ce:
+        pass  # concept 실패해도 기본 검색 결과 반환
+
     # 히스토리 업데이트
     new_history = list(req.history)
     new_history.append({"role": "user", "content": req.message})

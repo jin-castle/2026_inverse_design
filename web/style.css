@@ -1818,3 +1818,247 @@ pre code.hljs {
   background: var(--surface-3);
   color: var(--cyan);
 }
+
+/* ══ 개념 답변 카드 (Search 결과 내 concept 섹션) ═══════════════════════ */
+.concept-answer-card {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.04) 0%, rgba(0,0,0,0) 60%);
+  position: relative;
+}
+
+.concept-answer-card::before {
+  content: '💡 개념';
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.08em;
+}
+
+.concept-answer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.concept-answer-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.concept-answer-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+.concept-answer-ko {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.concept-diff-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.concept-cat-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.concept-dict-link {
+  font-size: 11px;
+  color: var(--cyan);
+  text-decoration: none;
+  padding: 3px 10px;
+  border: 1px solid rgba(0,212,255,0.3);
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.concept-dict-link:hover { background: rgba(0,212,255,0.08); }
+
+.concept-answer-summary {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.65;
+  margin: 0 0 10px;
+}
+
+.concept-answer-details {
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.concept-answer-details summary {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-2);
+  background: var(--surface-2);
+  list-style: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.concept-answer-details summary::-webkit-details-marker { display: none; }
+.concept-answer-details[open] summary { color: var(--text); }
+
+.concept-answer-expl {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 실행 결과 이미지 */
+.concept-answer-result {
+  margin: 10px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.concept-answer-result-label {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  background: rgba(0,212,255,0.05);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.05em;
+}
+
+.concept-answer-img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  display: block;
+  background: #060a14;
+  cursor: zoom-in;
+}
+
+.concept-answer-img-desc {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 데모 코드 */
+.concept-code-wrap {
+  position: relative;
+  padding: 10px 14px;
+}
+
+.concept-copy-btn {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  padding: 2px 10px;
+  font-size: 11px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 5;
+}
+.concept-copy-btn:hover { color: var(--text); }
+
+.concept-code-wrap pre {
+  max-height: 350px;
+  overflow-y: auto;
+  font-size: 12px !important;
+  margin: 0 !important;
+}
+
+/* 흔한 실수 */
+.concept-mistakes-list {
+  list-style: none;
+  padding: 10px 14px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.concept-mistakes-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.mistake-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 관련 개념 태그 */
+.concept-related-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.concept-related-label {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.concept-related-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.concept-related-tag:hover {
+  background: rgba(0,212,255,0.1);
+  color: var(--cyan);
+}
