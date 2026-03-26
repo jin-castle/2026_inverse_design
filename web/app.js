@@ -651,6 +651,53 @@ function switchTab(tab) {
       frame.src = '/dict';
     }
   }
+  // 사이드바 nav 활성 상태 동기화
+  document.querySelectorAll('.page-nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById('nav-' + tab);
+  if (navEl) navEl.classList.add('active');
+}
+
+/* ── 사이드바 Dict 서브메뉴 토글 ─────────────────────────────────────────── */
+function toggleDictNav() {
+  const sub = document.getElementById('dict-subnav');
+  const chevron = document.getElementById('dict-chevron');
+  const isOpen = sub.style.display !== 'none' && sub.style.display !== '';
+  sub.style.display = isOpen ? 'none' : 'flex';
+  chevron.textContent = isOpen ? '▸' : '▾';
+}
+
+/* ── 사이드바에서 Dict 특정 탭으로 이동 ──────────────────────────────────── */
+function openDict(section) {
+  switchTab('dict');
+  const frame = document.getElementById('dict-frame');
+  const target = '/dict#' + section;
+
+  if (frame.src.includes('/dict')) {
+    // 이미 로드된 경우 iframe 내부 탭 전환
+    try {
+      const iframeDoc = frame.contentWindow;
+      if (iframeDoc && iframeDoc.switchTab) {
+        iframeDoc.switchTab(section);
+      } else {
+        frame.src = target;
+      }
+    } catch(e) {
+      frame.src = target;
+    }
+  } else {
+    frame.src = target;
+  }
+
+  // 서브메뉴 열어두기
+  document.getElementById('dict-subnav').style.display = 'flex';
+  document.getElementById('dict-chevron').textContent = '▾';
+  return false;
+}
+
+/* ── 사이드바 Diagnose 이동 ───────────────────────────────────────────────── */
+function openPage(page) {
+  if (page === 'diagnose') switchTab('diagnose');
+  return false;
 }
 
 /* ── 코드 진단 ──────────────────────────────────────────────────────────── */

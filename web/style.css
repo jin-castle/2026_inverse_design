@@ -1716,3 +1716,105 @@ pre code.hljs {
   .sidebar-overlay { display: none !important; }
   .hamburger { display: none; }
 }
+
+/* ══ 사이드바 페이지 네비게이션 ══════════════════════════════════════════ */
+.page-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.page-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.page-nav-item:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.page-nav-item.active {
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--cyan);
+  border-left: 2px solid var(--cyan);
+  padding-left: 8px;
+}
+
+.page-nav-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Dict 그룹 */
+.page-nav-group {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.page-nav-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.page-nav-group-label:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.page-nav-chevron {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  transition: transform 0.2s;
+}
+
+.page-nav-sub {
+  display: flex;
+  flex-direction: column;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  margin-left: 18px;
+  margin-bottom: 2px;
+}
+
+.page-nav-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.page-nav-sub-item:hover {
+  background: var(--surface-3);
+  color: var(--cyan);
+}

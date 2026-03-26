@@ -70,6 +70,46 @@
           </div>
         </section>
 
+        <!-- 페이지 네비게이션 -->
+        <section class="sidebar-section">
+          <div class="section-title">페이지</div>
+          <nav class="page-nav">
+            <a class="page-nav-item active" href="/" id="nav-search">
+              <span class="page-nav-icon">🔍</span>
+              <span>Search</span>
+            </a>
+            <a class="page-nav-item" href="/diagnose" id="nav-diagnose" onclick="return openPage('diagnose')">
+              <span class="page-nav-icon">🩺</span>
+              <span>Diagnose</span>
+            </a>
+            <!-- Dict 그룹 -->
+            <div class="page-nav-group">
+              <div class="page-nav-group-label" onclick="toggleDictNav()">
+                <span class="page-nav-icon">📚</span>
+                <span>Dict</span>
+                <span class="page-nav-chevron" id="dict-chevron">▾</span>
+              </div>
+              <div class="page-nav-sub" id="dict-subnav">
+                <a class="page-nav-sub-item" href="/dict#concepts" onclick="return openDict('concepts')">
+                  💡 Concepts
+                </a>
+                <a class="page-nav-sub-item" href="/dict#patterns" onclick="return openDict('patterns')">
+                  🔷 Patterns
+                </a>
+                <a class="page-nav-sub-item" href="/dict#notebooks" onclick="return openDict('notebooks')">
+                  📓 Notebooks
+                </a>
+                <a class="page-nav-sub-item" href="/dict#examples" onclick="return openDict('examples')">
+                  🔬 Examples
+                </a>
+                <a class="page-nav-sub-item" href="/dict#errors" onclick="return openDict('errors')">
+                  ⚠️ Errors
+                </a>
+              </div>
+            </div>
+          </nav>
+        </section>
+
         <!-- 검색 방식 -->
         <section class="sidebar-section">
           <div class="section-title">검색 방식</div>

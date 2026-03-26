@@ -10,25 +10,96 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 DB_PATH = Path(__file__).parent.parent / "db" / "knowledge.db"
 
-PROMPT_TEMPLATE = """당신은 MEEP FDTD 시뮬레이션 전문가입니다.
+PROMPT_TEMPLATE = """당신은 MEEP 1.31.0 FDTD 전문가입니다.
 MEEP의 "{name}" ({name_ko}) 개념의 데모 코드를 작성해주세요.
 
 카테고리: {category} | 난이도: {difficulty}
 데모 힌트: {demo_hint}
 
-## 절대 규칙 (어기면 안 됨)
-1. **완전히 독립 실행 가능한 코드** — import부터 마지막 줄까지 그 자체로 실행 가능해야 함
-2. **import meep as mp** 반드시 포함 (meep.adjoint는 절대 import 금지 — autograd 없음)
-3. **한글 변수명 절대 금지** — 모든 변수명은 영어로
-4. **matplotlib.use('Agg')** 반드시 맨 앞에 포함
-5. **plt.savefig('output.png')** 로 이미지 저장 (plt.show() 사용 금지)
-6. **resolution=10** 이하로 설정 (빠른 실행)
-7. **100줄 이하**
-8. **SyntaxError 없는 완성된 코드** — 부분 코드, 스니펫 금지
-9. **NameError 없도록** — 사용하는 모든 변수는 코드 내에서 정의
-10. **mp.adjoint, mpa, OptimizationProblem, MaterialGrid** 등 adjoint 관련 API 사용 금지
+## MEEP 1.31.0 정확한 API (반드시 이것만 사용)
 
-## 출력 형식 (이 형식 그대로, 다른 텍스트 없이)
+```python
+# 시뮬레이션 생성
+sim = mp.Simulation(
+    cell_size=mp.Vector3(sx, sy),
+    boundary_layers=[mp.PML(dpml)],
+    geometry=[mp.Block(size=mp.Vector3(w, mp.inf), center=mp.Vector3(), material=mp.Medium(epsilon=12))],
+    sources=[mp.Source(mp.GaussianSource(fcen, fwidth=df), component=mp.Ez, center=mp.Vector3(-0.5*sx+dpml))],
+    resolution=10
+)
+
+# 플럭스 모니터 (T/R 측정)
+trans = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(center=mp.Vector3(x), size=mp.Vector3(0, sy)))
+
+# DFT 필드 모니터
+dft_obj = sim.add_dft_fields([mp.Ez], fcen, fcen, 1, where=mp.Volume(center=mp.Vector3(), size=mp.Vector3(sx, sy)))
+
+# 시뮬레이션 실행
+sim.run(until_after_sources=mp.stop_when_fields_decayed(50, mp.Ez, mp.Vector3(0.5*sx-dpml), 1e-9))
+# 또는
+sim.run(until=200)
+# 또는
+sim.run(mp.at_every(10, mp.output_efield_z), until=100)
+
+# 필드 배열 추출
+ez_data = sim.get_array(component=mp.Ez, center=mp.Vector3(), size=mp.Vector3(sx, sy))
+
+# DFT 필드 추출
+ez_dft = sim.get_dft_array(dft_obj, mp.Ez, 0)
+
+# 플럭스 데이터
+flux_freqs = mp.get_flux_freqs(trans)
+trans_flux = mp.get_fluxes(trans)
+
+# 에너지 모니터
+energy_mon = sim.add_energy(fcen, df, nfreq, mp.EnergyRegion(center=mp.Vector3(), size=mp.Vector3(sx, sy)))
+
+# 대칭 (symmetries 인자로 전달)
+sym = [mp.Mirror(mp.Y)]
+sim = mp.Simulation(..., symmetries=sym, ...)
+
+# k_point (주기 경계)
+sim = mp.Simulation(..., k_point=mp.Vector3(0.5), ...)
+
+# Harminv (공진 모드 분석)
+sim.run(mp.after_sources(mp.Harminv(mp.Ez, mp.Vector3(), fcen, df)), until_after_sources=300)
+
+# near2far
+n2f = sim.add_near2far(fcen, 0, 1, mp.Near2FarRegion(center=mp.Vector3(), size=mp.Vector3(0, sy)))
+ff = sim.get_farfield(n2f, mp.Vector3(1000, 0))
+
+# LDOS
+sim.run(mp.dft_ldos(fcen, 0, 1), until_after_sources=mp.stop_when_fields_decayed(50, mp.Ez, mp.Vector3(), 1e-9))
+ldos_data = mp.get_ldos_data()
+
+# EigenModeSource
+src = mp.EigenModeSource(mp.GaussianSource(fcen, fwidth=df), center=mp.Vector3(-0.5*sx+dpml),
+    size=mp.Vector3(0, sy), eig_band=1, eig_parity=mp.ODD_Z)
+
+# MaterialGrid (adjoint 없이 단독 사용 가능)
+design_region = mp.MaterialGrid(mp.Vector3(Nx, Ny), mp.air, mp.Medium(epsilon=12),
+    weights=np.ones((Nx*Ny,))*0.5)
+
+# get_eigenmode_coefficients
+res = sim.get_eigenmode_coefficients(trans, [1], eig_parity=mp.ODD_Z)
+alpha = res.alpha[0, 0, 0]  # 진폭
+```
+
+## 절대 규칙
+1. **완전히 독립 실행 가능** — import부터 plt.savefig까지 그 자체로 실행 가능
+2. **import meep.adjoint 절대 금지** (autograd 없음, ModuleNotFoundError 발생)
+3. **mp.ModeSolver 사용 금지** (MPB 미설치)
+4. **mp.get_dft_array** 대신 **sim.get_dft_array** 사용
+5. **한글 변수명 금지** — 변수명은 모두 영어로
+6. **matplotlib.use('Agg')** 반드시 맨 앞에
+7. **plt.savefig('output.png')** 로 저장 (plt.show() 금지)
+8. **resolution=10** 이하 (빠른 실행)
+9. **100줄 이하**
+10. **모든 변수를 사용 전 반드시 정의** (NameError 방지)
+11. **Simulation(courant=...)** 사용 금지 — courant 파라미터 없음
+12. **실제 sim.run()까지 완성** — 중간에 끊기는 코드 금지
+
+## 출력 형식 (이 형식 그대로)
 
 DEMO_CODE:
 ```python
@@ -38,7 +109,7 @@ import meep as mp
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ... 완전한 독립 실행 코드 ...
+# 완전한 독립 실행 코드
 
 plt.savefig('output.png')
 print("Done")
@@ -74,7 +145,8 @@ def load_targets(name_filter=None):
     else:
         rows = conn.execute(
             "SELECT name, name_ko, category, difficulty, demo_description FROM concepts "
-            "WHERE result_status='error' ORDER BY difficulty, category, name"
+            "WHERE result_status='pending' "
+            "ORDER BY difficulty, category, name"
         ).fetchall()
     conn.close()
     return [{"name": r[0], "name_ko": r[1], "category": r[2],
@@ -116,8 +188,8 @@ def main():
         print(f"[{i}/{len(targets)}] 🔄 {name} ({concept['name_ko']})...")
         try:
             msg = client.messages.create(
-                model="claude-haiku-4-5",  # 빠르고 저렴한 모델
-                max_tokens=2000,
+                model="claude-sonnet-4-6",
+                max_tokens=2500,
                 messages=[{"role": "user", "content": prompt}],
             )
             text = msg.content[0].text
