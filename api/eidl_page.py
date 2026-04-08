@@ -795,6 +795,23 @@ REPOS = {
 
 
 # ── HTML 생성 ──────────────────────────────────────────────────────────────────
+def _get_patterns_for_repo(repo_name: str) -> list:
+    """DB에서 해당 레포 관련 패턴 조회"""
+    import sqlite3
+    from pathlib import Path
+    DB = Path(__file__).parent.parent / "db" / "knowledge.db"
+    try:
+        conn = sqlite3.connect(str(DB))
+        rows = conn.execute(
+            "SELECT pattern_name, description, code_snippet FROM patterns WHERE author_repo LIKE ?",
+            (f"%{repo_name}%",)
+        ).fetchall()
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
 def _repo_card(r: dict, tab: str) -> str:
     status_color = {"public": "#22c55e", "private": "#94a3b8",
                     "public, fork": "#3b82f6", "private, fork": "#8b5cf6",
@@ -817,6 +834,26 @@ def _repo_card(r: dict, tab: str) -> str:
     arch_html = f'<div class="eidl-arch"><strong>🔧 아키텍처:</strong> {_e(r.get("architecture",""))}</div>' if r.get("architecture") else ""
     dataset_html = f'<div class="eidl-dataset"><strong>📊 데이터셋:</strong> {_e(r.get("dataset",""))}</div>' if r.get("dataset") else ""
 
+    # meep-kb 패턴 링크
+    patterns = _get_patterns_for_repo(r["name"])
+    patterns_html = ""
+    if patterns:
+        patterns_html = '<div class="eidl-patterns"><div class="eidl-patterns-title">⚙️ meep-kb 패턴 ({} 개)</div>'.format(len(patterns))
+        for pat_name, pat_desc, pat_code in patterns:
+            code_preview = (pat_code or "")[:400].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+            pat_id = f"pat-{_e(pat_name)}"
+            patterns_html += f'''
+<div class="eidl-pattern-item">
+  <div class="eidl-pattern-header" onclick="togglePatCode('{pat_id}')">
+    <a href="/dict#{_e(pat_name)}" target="_blank" class="eidl-pattern-name">⚙️ {_e(pat_name)}</a>
+    <span class="eidl-pattern-desc">{_e((pat_desc or "")[:80])}</span>
+    <span class="eidl-code-toggle">▶ 코드 보기</span>
+  </div>
+  <pre id="{pat_id}" class="eidl-code-block" style="display:none"><code class="language-python">{code_preview}
+...</code></pre>
+</div>'''
+        patterns_html += '</div>'
+
     return f'''
 <div class="eidl-card" id="{_e(tab)}-{_e(r["name"])}">
   <div class="eidl-card-header">
@@ -832,6 +869,7 @@ def _repo_card(r: dict, tab: str) -> str:
   {arch_html}
   {dataset_html}
   {files_html}
+  {patterns_html}
   {notes_html}
 </div>'''
 
@@ -1002,6 +1040,46 @@ body {{ background: var(--bg); color: var(--text); font-family: 'Segoe UI', syst
 }}
 .eidl-search:focus {{ outline: none; border-color: var(--accent); }}
 
+/* ── meep-kb 패턴 링크 ── */
+.eidl-patterns {{
+  border: 1px solid #1e3a5f; border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 10px; background: #0a1628;
+}}
+.eidl-patterns-title {{
+  font-size: 11px; color: #60a5fa; font-weight: 700; margin-bottom: 8px;
+}}
+.eidl-pattern-item {{
+  border-bottom: 1px solid #1e293b; padding: 5px 0;
+}}
+.eidl-pattern-item:last-child {{ border-bottom: none; }}
+.eidl-pattern-header {{
+  display: flex; align-items: baseline; gap: 8px; cursor: pointer;
+  flex-wrap: wrap;
+}}
+.eidl-pattern-header:hover .eidl-pattern-name {{ text-decoration: underline; }}
+.eidl-pattern-name {{
+  font-size: 11.5px; color: #7dd3fc; font-weight: 600;
+  white-space: nowrap;
+}}
+.eidl-pattern-desc {{
+  font-size: 10.5px; color: var(--muted); flex: 1;
+}}
+.eidl-code-toggle {{
+  font-size: 10px; color: #475569; cursor: pointer; white-space: nowrap;
+  padding: 1px 6px; border: 1px solid #334155; border-radius: 4px;
+  transition: all 0.2s;
+}}
+.eidl-code-toggle:hover {{ color: var(--accent); border-color: var(--accent); }}
+.eidl-code-block {{
+  background: #020617; border-radius: 5px; padding: 10px 12px;
+  margin-top: 6px; font-size: 10.5px; overflow-x: auto;
+  max-height: 300px; overflow-y: auto;
+  border: 1px solid #1e3a5f;
+}}
+.eidl-code-block code {{
+  color: #94a3b8; font-family: 'Courier New', monospace; white-space: pre;
+}}
+
 @media (max-width: 768px) {{
   .eidl-cards-grid {{ grid-template-columns: 1fr; }}
   .eidl-tab-btn {{ min-width: 90px; padding: 8px 12px; }}
@@ -1046,6 +1124,20 @@ function switchEidlTab(name, btn) {{
   document.getElementById('eidl-tab-' + name).classList.add('active');
   btn.classList.add('active');
   window.location.hash = 'eidl-' + name;
+}}
+
+function togglePatCode(id) {{
+  const el = document.getElementById(id);
+  const toggle = el.previousElementSibling.querySelector('.eidl-code-toggle');
+  if (el.style.display === 'none') {{
+    el.style.display = 'block';
+    toggle.textContent = '▼ 접기';
+    toggle.style.color = 'var(--accent)';
+  }} else {{
+    el.style.display = 'none';
+    toggle.textContent = '▶ 코드 보기';
+    toggle.style.color = '';
+  }}
 }}
 window.addEventListener('load', () => {{
   const h = window.location.hash.replace('#eidl-','');
