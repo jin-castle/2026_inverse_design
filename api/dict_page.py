@@ -575,16 +575,50 @@ def _build_concepts_html(concepts: list) -> str:
             mistakes_html += '</ul>'
 
         # 실행 결과 이미지 + 설명
-        img_url  = c.get("result_images") or ""
+        raw_img  = c.get("result_images") or ""
         stdout   = _e((c.get("result_stdout") or "")[:300])
         result_html = ""
-        if img_url and status == "success":
-            result_html = f'''
+
+        # result_images 포맷 파싱:
+        #   1) /static/results/... 경로 문자열
+        #   2) JSON 배열 — 각 항목이 base64 str 또는 /static/ 경로
+        img_src = ""
+        if raw_img and status == "success":
+            if raw_img.startswith("/static/"):
+                img_src = raw_img
+            elif raw_img.startswith("["):
+                try:
+                    arr = json.loads(raw_img)
+                    if arr:
+                        item = arr[0]
+                        if isinstance(item, str):
+                            if item.startswith("/static/"):
+                                img_src = item
+                            else:
+                                # base64 PNG/JPG
+                                img_src = f"data:image/png;base64,{item}"
+                except Exception:
+                    pass
+
+        if img_src:
+            if img_src.startswith("data:"):
+                # base64 → <img src="data:...">  (링크 없음)
+                result_html = f'''
   <div class="concept-result-block">
     <div class="concept-result-label">📊 실행 결과</div>
     <div class="concept-result-inner">
-      <a href="{_e(img_url)}" target="_blank">
-        <img src="{_e(img_url)}" alt="{name} 실행 결과" class="concept-result-img"
+      <img src="{img_src}" alt="{name} 실행 결과" class="concept-result-img"
+           onerror="this.parentElement.parentElement.style.display='none'"/>
+      {f'<p class="concept-result-desc">{demo_desc}</p>' if demo_desc else ""}
+    </div>
+  </div>'''
+            else:
+                result_html = f'''
+  <div class="concept-result-block">
+    <div class="concept-result-label">📊 실행 결과</div>
+    <div class="concept-result-inner">
+      <a href="{_e(img_src)}" target="_blank">
+        <img src="{_e(img_src)}" alt="{name} 실행 결과" class="concept-result-img"
              onerror="this.parentElement.parentElement.style.display='none'"/>
       </a>
       {f'<p class="concept-result-desc">{demo_desc}</p>' if demo_desc else ""}
