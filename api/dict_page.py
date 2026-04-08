@@ -1104,6 +1104,7 @@ pre[class*="language-"] {{
   <button class="tab-btn" onclick="switchTab('examples', this)">📚 Examples ({len(examples)})</button>
   <button class="tab-btn" onclick="switchTab('errors', this)">❌ Errors ({len(errors)})</button>
   <button class="tab-btn" onclick="switchTab('concepts', this)">💡 Concepts ({len(concepts)})</button>
+  <a href="/eidl" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">🏛️ EIDL Repos <span style="font-size:10px;background:#1e40af;color:#93c5fd;border-radius:10px;padding:1px 7px;">54</span></a>
 </div>
 
 <!-- ── Patterns 탭 ── -->

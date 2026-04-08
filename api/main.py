@@ -395,8 +395,10 @@ else:
 async def pattern_dictionary():
     """MEEP-KB Pattern Dictionary — readthedocs 스타일 HTML 사전 페이지"""
     sys.path.insert(0, str(BASE / "api"))
-    from dict_page import generate_html
-    return HTMLResponse(content=generate_html(), status_code=200)
+    import importlib
+    import dict_page
+    importlib.reload(dict_page)
+    return HTMLResponse(content=dict_page.generate_html(), status_code=200)
 
 
 @app.get("/eidl", response_class=HTMLResponse)
