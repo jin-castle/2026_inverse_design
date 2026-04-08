@@ -399,6 +399,16 @@ async def pattern_dictionary():
     return HTMLResponse(content=generate_html(), status_code=200)
 
 
+@app.get("/eidl", response_class=HTMLResponse)
+async def eidl_repository():
+    """EIDL 연구실 GitHub 레포지토리 전체 정리 페이지"""
+    sys.path.insert(0, str(BASE / "api"))
+    import importlib
+    import eidl_page
+    importlib.reload(eidl_page)
+    return HTMLResponse(content=eidl_page.generate_eidl_html(), status_code=200)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765, reload=False)
