@@ -146,7 +146,7 @@ def call_llm(prompt: str, api_key: str) -> str:
 
     body = json.dumps({
         "model": "claude-sonnet-4-6",
-        "max_tokens": 2500,
+        "max_tokens": 8000,
         "messages": [{"role": "user", "content": prompt}]
     }).encode("utf-8")
 

@@ -9,10 +9,11 @@ from pathlib import Path
 BASE = Path("/app")
 sys.path.insert(0, str(BASE / "query"))
 
-DB_PATH    = BASE / "db/knowledge.db"
+_LOCAL_DB = Path("/mnt/c/Users/user/projects/meep-kb/db/knowledge.db")
+DB_PATH    = BASE / "db/knowledge.db" if (BASE / "db/knowledge.db").exists() else _LOCAL_DB
 CHROMA_DIR = BASE / "db/chroma"
 GRAPH_PATH = BASE / "db/knowledge_graph_v2.pkl"
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_NAME = "BAAI/bge-m3"   # ChromaDB 컬렉션과 동일한 1024-dim 모델 (수정: MiniLM 384-dim → bge-m3 1024-dim)
 
 _model  = None
 _client = None
@@ -120,6 +121,141 @@ def keyword_search(query: str, db_types: list, n: int) -> list:
     return results
 
 
+# ── sim_errors_unified 3분할 symptom 검색 ──────────────────────────────────────
+# 수치 패턴 키워드
+_NUMERICAL_KEYWORDS = ["t>", "nan", "ratio", "gradient", "t=", "r=", "flux", "%", "×", "배", "차이", "비율", "수치"]
+# 행동 패턴 키워드
+_BEHAVIORAL_KEYWORDS = ["수렴", "발산", "체커보드", "hanging", "diverge", "oscillat", "수렴실패", "응답없음", "중단", "왜곡", "오차"]
+
+def sim_errors_v2_search(query: str, n: int) -> list:
+    """sim_errors_unified 테이블에서 symptoms 3분할 컬럼을 활용한 검색.
+    (구 sim_errors_v2_search — 이름 유지로 하위 호환성 보존)
+
+    - 수치 패턴 키워드 포함 → symptom_numerical LIKE 검색
+    - 행동 패턴 키워드 포함 → symptom_behavioral LIKE 검색
+    - 나머지 / 공통      → error_message + symptom_error_pattern LIKE 검색
+    - fix_worked=1 케이스에 score +0.1 보너스
+    - origin_table 로 source 레이블 구분 (sim_v2 / sim_se)
+    """
+    results = []
+    q_lower = query.lower()
+
+    # 쿼리 패턴 분류
+    is_numerical  = any(kw in q_lower for kw in _NUMERICAL_KEYWORDS)
+    is_behavioral = any(kw in q_lower for kw in _BEHAVIORAL_KEYWORDS)
+
+    # 검색에 사용할 LIKE 토큰: 공백 분리된 각 단어
+    tokens = [t.strip() for t in query.split() if len(t.strip()) >= 2]
+    if not tokens:
+        tokens = [query]
+
+    conn = sqlite3.connect(str(DB_PATH), timeout=30)
+
+    seen_ids = set()
+
+    def _fetch_rows(where_clause: str, params: tuple) -> list:
+        sql = (
+            "SELECT id, error_type, error_message, error_class, "
+            "physics_cause, root_cause, fix_description, fixed_code, "
+            "fix_worked, verification_criteria, diagnostic_snippet, "
+            "symptom_numerical, symptom_behavioral, symptom_error_pattern, "
+            "origin_table "
+            f"FROM sim_errors_unified WHERE {where_clause} LIMIT ?"
+        )
+        try:
+            return conn.execute(sql, params + (n * 3,)).fetchall()
+        except Exception:
+            return []
+
+    try:
+        row_buckets = []  # list of (rows, base_score)
+
+        # 1) 수치 패턴 검색
+        if is_numerical:
+            for tok in tokens:
+                rows = _fetch_rows("symptom_numerical LIKE ?", (f"%{tok}%",))
+                if rows:
+                    row_buckets.append((rows, 0.88))
+
+        # 2) 행동 패턴 검색
+        if is_behavioral:
+            for tok in tokens:
+                rows = _fetch_rows("symptom_behavioral LIKE ?", (f"%{tok}%",))
+                if rows:
+                    row_buckets.append((rows, 0.88))
+
+        # 3) 에러 메시지 / symptom_error_pattern 검색 (항상 수행)
+        # 3a) 전체 쿼리 문자열로 정확 매칭 (높은 스코어)
+        rows = _fetch_rows(
+            "error_message LIKE ? OR symptom_error_pattern LIKE ?",
+            (f"%{query[:120]}%", f"%{query[:120]}%")
+        )
+        if rows:
+            row_buckets.append((rows, 0.93))
+        # 3b) 토큰별 매칭 (일반 스코어)
+        for tok in tokens:
+            rows = _fetch_rows(
+                "error_message LIKE ? OR symptom_error_pattern LIKE ?",
+                (f"%{tok}%", f"%{tok}%")
+            )
+            if rows:
+                row_buckets.append((rows, 0.85))
+
+        # 4) 결과가 없으면 전체 텍스트 fallback (physics_cause, root_cause, fix_description)
+        if not row_buckets:
+            for tok in tokens:
+                rows = _fetch_rows(
+                    "physics_cause LIKE ? OR root_cause LIKE ? OR fix_description LIKE ?",
+                    (f"%{tok}%", f"%{tok}%", f"%{tok}%")
+                )
+                if rows:
+                    row_buckets.append((rows, 0.75))
+
+        # 수집된 row bucket → 결과 dict 변환
+        for rows, base_score in row_buckets:
+            for r in rows:
+                row_id = r[0]
+                if row_id in seen_ids:
+                    continue
+                seen_ids.add(row_id)
+
+                score = base_score
+                # fix_worked=1 이면 +0.1 보너스
+                if r[8] == 1:
+                    score = min(score + 0.1, 1.0)
+
+                # origin 별 source 레이블
+                origin = r[14] or "sim_errors_v2"
+                src_label = "sim_v2" if origin == "sim_errors_v2" else "sim_se"
+
+                # title: error_type 없으면 error_message 앞부분
+                title = (r[1] or r[2] or "Unknown Error")[:100]
+
+                # cause: physics_cause 우선, 없으면 root_cause
+                cause_text = r[4] or r[5] or ""
+
+                results.append({
+                    "source": src_label,
+                    "type":   "SIM_ERROR",
+                    "score":  round(score, 3),
+                    "title":  title,
+                    "category": r[3] or "",
+                    "cause":    cause_text[:300],
+                    "solution": (r[6] or "")[:300],
+                    "code":     (r[7] or "")[:500],
+                    "verification_criteria": r[9] or "",
+                    "diagnostic_snippet":   (r[10] or "")[:300],
+                })
+
+    finally:
+        conn.close()
+
+    # 점수 내림차순 → 상위 n개
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:n]
+
+
+
 # ── 벡터 검색 ────────────────────────────────────────────────────────────────
 def vector_search(query: str, keywords: list, db_types: list, n: int) -> list:
     """ChromaDB 시맨틱 검색"""
@@ -154,7 +290,10 @@ def vector_search(query: str, keywords: list, db_types: list, n: int) -> list:
                     seen_ids.add(doc_id)
                     score = 1 - dist
                     if score < 0.25: continue
-                    db_id = int(doc_id.replace("err_", ""))
+                    try:
+                        db_id = int(doc_id.replace("err_", "").split("_")[0])
+                    except (ValueError, IndexError):
+                        continue
                     row   = conn.execute(
                         "SELECT error_msg, category, cause, solution, source_url FROM errors WHERE id=?", (db_id,)
                     ).fetchone()
@@ -174,7 +313,10 @@ def vector_search(query: str, keywords: list, db_types: list, n: int) -> list:
                     seen_ids.add(doc_id)
                     score = 1 - dist
                     if score < 0.25: continue
-                    db_id = int(doc_id.replace("ex_", ""))
+                    try:
+                        db_id = int(doc_id.replace("ex_", "").split("_")[0])
+                    except (ValueError, IndexError):
+                        continue
                     row   = conn.execute(
                         "SELECT title, description, tags, code, source_repo FROM examples WHERE id=?", (db_id,)
                     ).fetchone()
@@ -194,7 +336,10 @@ def vector_search(query: str, keywords: list, db_types: list, n: int) -> list:
                     seen_ids.add(doc_id)
                     score = 1 - dist
                     if score < 0.25: continue
-                    db_id = int(doc_id.replace("doc_", ""))
+                    try:
+                        db_id = int(doc_id.replace("doc_", "").split("_")[0])
+                    except (ValueError, IndexError):
+                        continue
                     row   = conn.execute(
                         "SELECT section, content, url, simulator FROM docs WHERE id=?", (db_id,)
                     ).fetchone()
@@ -528,10 +673,14 @@ def execute(plan, query: str, intent: dict) -> list:
                     if items:
                         break
             all_items.extend(items)
+            # sim_errors_v2 symptom 3분할 검색 병합
+            all_items.extend(sim_errors_v2_search(query, plan.n_results))
 
         elif method == "vector":
             items = vector_search(query, keywords, plan.db_types, plan.n_results)
             all_items.extend(items)
+            # sim_errors_v2 symptom 3분할 검색 병합
+            all_items.extend(sim_errors_v2_search(query, plan.n_results))
 
         elif method == "graph":
             items = graph_search(query, keywords, plan.graph_mode, plan.graph_depth, plan.n_results)

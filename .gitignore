@@ -27,7 +27,22 @@ db/knowledge_graph.pkl
 
 db/knowledge.db
 db/knowledge_sync.db
+db/chroma/
+db/results/
+*.sqlite3
+*.bin
 __pycache__/
 *.pyc
 .env
-db/results/
+*.db
+*_backup_*.db
+main.py.bak
+.tmp/
+tmp_*
+check_*.py
+verify_*.py
+fix_*.txt
+*_result.txt
+*_out.txt
+sym_*.txt
+vfix_status.txt

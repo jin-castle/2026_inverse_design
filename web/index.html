@@ -315,6 +315,10 @@ AttributeError: 'OptimizationProblem' object has no attribute 'update_design'
             <button class="diag-submit-btn" id="diag-submit" onclick="runDiagnose()">
               진단 시작
             </button>
+            <button class="diag-run-btn" id="diag-run-btn" onclick="runFixAndVerify()"
+                    title="수정 코드 생성 + Docker 실행 검증 (최대 60초)">
+              ⚡ 수정 + 실행 검증
+            </button>
             <button class="diag-clear-btn" onclick="clearDiagnose()">
               초기화
             </button>
@@ -322,6 +326,9 @@ AttributeError: 'OptimizationProblem' object has no attribute 'update_design'
 
           <!-- 진단 결과 -->
           <div id="diag-result" class="diag-result" style="display:none;"></div>
+
+          <!-- 실행 검증 결과 -->
+          <div id="diag-run-result" class="diag-run-result" style="display:none;"></div>
 
           <!-- 예시 버튼 -->
           <div class="diag-examples">
@@ -335,6 +342,9 @@ AttributeError: 'OptimizationProblem' object has no attribute 'update_design'
               </button>
               <button class="diag-ex-btn" onclick="fillDiagExample('eigenmode')">
                 EigenModeSource 오류
+              </button>
+              <button class="diag-ex-btn" onclick="fillDiagExample('src_in_pml')">
+                소스 PML 내부 배치
               </button>
             </div>
           </div>

@@ -25,7 +25,7 @@ sys.path.insert(0, str(BASE / "query"))
 
 DB_PATH    = BASE / "db/knowledge.db"
 CHROMA_DIR = BASE / "db/chroma"
-GRAPH_PATH = BASE / "db/knowledge_graph_v2.pkl"
+GRAPH_PATH = BASE / "db/knowledge_graph_v3.pkl"
 
 # ── Ingest 인증 키 ────────────────────────────────────────────────────────────
 _INGEST_API_KEY = os.environ.get("INGEST_API_KEY", "")
@@ -72,6 +72,36 @@ _cache: dict = {
 @app.on_event("startup")
 async def startup():
     """서버 시작 시 모델/DB/그래프 사전 로드"""
+    # ── fastembed 시맨틱 인덱스 구축 (비동기 백그라운드로 실행) ──────────────────
+    print("[startup] fastembed 시맨틱 인덱스 구축 중...")
+    try:
+        import sys as _sys, asyncio, concurrent.futures
+        # /app/api 경로 우선 설정 (diagnose_engine과 같은 경로)
+        if "/app/api" not in _sys.path:
+            _sys.path.insert(0, "/app/api")
+        from semantic_search import build_index
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            n_indexed = await loop.run_in_executor(pool, build_index)
+        # 전역 캐시에 모듈 참조 저장 → search_vector에서 동일 인스턴스 접근
+        import semantic_search as _sem_mod
+        _cache["semantic_module"] = _sem_mod
+        # diagnose_engine에도 직접 주입 (sys.path 충돌 방지)
+        try:
+            import sys as _sys2
+            if "diagnose_engine" in _sys2.modules:
+                _sys2.modules["diagnose_engine"]._SEM_MOD = _sem_mod
+                print(f"[startup] ✅ diagnose_engine._SEM_MOD 주입 완료")
+            else:
+                import diagnose_engine as _de
+                _de._SEM_MOD = _sem_mod
+                print(f"[startup] ✅ diagnose_engine 로드 후 주입 완료")
+        except Exception as _inj_e:
+            print(f"[startup] ⚠️ _SEM_MOD 주입 실패: {_inj_e}")
+        print(f"[startup] ✅ 시맨틱 인덱스 완료: {n_indexed}개 레코드 (index_size={_sem_mod.index_size()})")
+    except Exception as e:
+        print(f"[startup] ⚠️ 시맨틱 인덱스 실패: {e}")
+
     print("[startup] sentence-transformers 모델 로딩...")
     try:
         from sentence_transformers import SentenceTransformer
@@ -102,12 +132,15 @@ async def startup():
         print(f"[startup] ⚠️ 그래프 로드 실패: {e}")
 
     # search_executor의 전역 캐시에 주입
+    # ChromaDB 컬렉션(errors/docs/examples)은 BAAI/bge-m3 (1024-dim)으로 인덱싱됨
+    # → model_1024를 주입해야 dimension mismatch 해결
     try:
         import search_executor as se
-        se._model  = _cache["model"]
+        se._model  = _cache.get("model_1024") or _cache.get("model")  # bge-m3 우선
         se._client = _cache["chroma"]
         se._graph  = _cache["graph"]
-        print("[startup] ✅ search_executor 캐시 주입 완료")
+        model_name = "bge-m3(1024)" if _cache.get("model_1024") else "MiniLM(384)"
+        print(f"[startup] ✅ search_executor 캐시 주입 완료 (model={model_name})")
     except Exception as e:
         print(f"[startup] ⚠️ search_executor 캐시 주입 실패: {e}")
 
@@ -130,6 +163,13 @@ class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage] = []
     n: int = 5
+
+
+class TaskGenerateRequest(BaseModel):
+    task: str
+    task_type: Optional[str] = None
+    stage: Optional[str] = None
+    constraints: dict = {}
 
 
 # ── 핵심 검색 로직 ─────────────────────────────────────────────────────────────
@@ -246,6 +286,58 @@ async def search(request: Request, req: SearchRequest):
         pass  # concept 섹션 추가 실패해도 기본 검색 결과는 반환
 
     return result
+
+
+@app.post("/api/task/generate")
+@limiter.limit("30/minute")
+async def task_generate(request: Request, req: TaskGenerateRequest):
+    import sys as _sys
+    _sys.path.insert(0, str(BASE / "api"))
+    from task_router import classify_task
+    from rule_registry import load_policy, merge_constraints, check_compliance
+    from template_registry import render_template
+    from context_validator import validate_generated_task
+
+    route = classify_task(req.task, req.task_type, req.stage)
+    if not route.get("recognized"):
+        return {"ok": False, "error": "Unrecognized task type", "route": route}
+
+    policy = load_policy(route["task_type"])
+    constraints = merge_constraints(policy, req.constraints or {})
+    compliance = check_compliance(policy, constraints)
+
+    stage = route["stage"]
+    stage_info = policy.get("stages", {}).get(stage)
+    if not stage_info:
+        return {"ok": False, "error": f"Unknown stage: {stage}", "route": route}
+
+    render_ctx = dict(constraints)
+    render_ctx["stage"] = stage
+    import json as _json
+    render_ctx["stage_json"] = _json.dumps(stage)
+    render_ctx["runtime_mode_json"] = _json.dumps(constraints.get("runtime_mode", "local"))
+    render_ctx["optimizer_json"] = _json.dumps(constraints.get("optimizer", "Adam"))
+
+    code = render_template(route["task_type"], stage_info["template"], render_ctx)
+    config = render_template(route["task_type"], "config.json.j2", render_ctx)
+
+    required_outputs = stage_info.get("required_outputs", []) + policy.get("required_outputs_common", [])
+    validator = validate_generated_task(route["task_type"], stage, constraints, required_outputs, code, config)
+
+    return {
+        "ok": validator.get("passed", False) and compliance.get("passed", False),
+        "task_type": route["task_type"],
+        "stage": stage,
+        "description": stage_info.get("description", ""),
+        "required_outputs": required_outputs,
+        "warnings": compliance.get("warnings", []) + validator.get("soft_warning", []),
+        "compliance": compliance,
+        "context_validation": validator,
+        "artifacts": {
+            "code": code,
+            "config": config
+        }
+    }
 
 
 @app.post("/api/chat")
@@ -538,8 +630,8 @@ async def ingest_sim_error(req: IngestSimErrorRequest, _: None = Depends(verify_
               (run_id, project_id, error_type, error_message, meep_version,
                context, root_cause, fix_applied, fix_worked,
                fix_description, fix_keywords, pattern_name, source,
-               original_code, fixed_code, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               original_code, fixed_code, confidence, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             run_id,
             req.project_id or "unknown",
@@ -556,6 +648,7 @@ async def ingest_sim_error(req: IngestSimErrorRequest, _: None = Depends(verify_
             req.source[:50],
             req.original_code[:5000],
             req.fixed_code[:5000],
+            "draft" if req.fixed_code else "low",
             dt.datetime.now().isoformat(),
         ))
         row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -642,9 +735,275 @@ async def ingest_error(req: IngestErrorRequest, _: None = Depends(verify_ingest_
     except Exception as e:
         chroma_err = str(e)
 
+    # 실시간 임베딩 인덱스 갱신 (confidence high/medium인 경우만)
+    try:
+        from semantic_search import add_to_index
+        add_to_index(row_id)
+    except Exception:
+        pass
+
     return {"ok": True, "sqlite_id": row_id, "chroma_ok": chroma_ok,
             "chroma_error": chroma_err,
             "message": f"저장 완료 (id={row_id}, stage={req.stage or 'unknown'})"}
+
+
+# ── sim_errors_unified 통합 저장 시스템 ──────────────────────────────────────
+
+class IngestSimErrorUnifiedRequest(BaseModel):
+    # ── 기존 IngestSimErrorRequest 13개 필드 ──────────────────────────────────
+    error_type: str                        # "MPIError", "Divergence" 등
+    error_message: str                     # 실제 traceback/에러 메시지
+    original_code: str = ""               # 오류 발생 코드
+    fixed_code: str = ""                  # 수정된 코드
+    fix_description: str = ""            # 한국어 수정 설명
+    root_cause: str = ""                  # 근본 원인
+    context: str = ""                     # 추가 컨텍스트
+    fix_keywords: str = "[]"             # JSON 배열 문자열
+    pattern_name: str = ""               # 패턴/프로젝트 이름
+    source: str = "marl_auto"            # 데이터 출처
+    fix_worked: int = 1                   # 검증 여부 (1=확인됨)
+    project_id: str = ""
+    meep_version: str = ""
+    # ── 실행 컨텍스트 ────────────────────────────────────────────────────────
+    run_mode: str = ""
+    run_stage: str = ""
+    iteration: int = 0
+    mpi_np: int = 1
+    device_type: str = "general"
+    wavelength_um: float = 0.0
+    resolution: int = 0
+    pml_thickness: float = 0.0
+    cell_size: str = ""                   # JSON
+    dim: int = 2
+    uses_adjoint: int = 0
+    uses_symmetry: int = 0
+    run_mode_meta: str = ""
+    # ── 에러 분류 ────────────────────────────────────────────────────────────
+    error_class: str = ""
+    traceback_full: str = ""
+    # ── 증상 ─────────────────────────────────────────────────────────────────
+    symptom: str = ""
+    symptom_numerical: str = ""
+    symptom_behavioral: str = ""
+    symptom_error_pattern: str = ""
+    # ── 원인 체인 ────────────────────────────────────────────────────────────
+    physics_cause: str = ""
+    code_cause: str = ""
+    root_cause_chain: str = ""            # JSON
+    trigger_code: str = ""
+    trigger_line: str = ""
+    # ── 수정 ─────────────────────────────────────────────────────────────────
+    fix_type: str = ""
+    original_code_raw: str = ""
+    code_diff: str = ""
+    verification_criteria: str = ""
+    diagnostic_snippet: str = ""
+    # ── 메타 ─────────────────────────────────────────────────────────────────
+    code_hash: str = ""
+    code_length: int = 0
+    run_time_sec: float = 0.0
+
+
+def _ensure_sim_errors_unified_table(conn: sqlite3.Connection):
+    """sim_errors_unified 테이블이 없으면 자동 생성"""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sim_errors_unified (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            origin_table        TEXT    DEFAULT 'pipeline',
+            origin_id           INTEGER,
+            source              TEXT    DEFAULT '',
+            run_mode            TEXT    DEFAULT '',
+            run_stage           TEXT    DEFAULT '',
+            iteration           INTEGER DEFAULT 0,
+            mpi_np              INTEGER DEFAULT 1,
+            device_type         TEXT    DEFAULT 'general',
+            wavelength_um       REAL    DEFAULT 0.0,
+            resolution          INTEGER DEFAULT 0,
+            pml_thickness       REAL    DEFAULT 0.0,
+            cell_size           TEXT    DEFAULT '',
+            dim                 INTEGER DEFAULT 2,
+            uses_adjoint        INTEGER DEFAULT 0,
+            uses_symmetry       INTEGER DEFAULT 0,
+            run_mode_meta       TEXT    DEFAULT '',
+            error_class         TEXT    DEFAULT '',
+            error_type          TEXT    DEFAULT '',
+            error_message       TEXT    DEFAULT '',
+            traceback_full      TEXT    DEFAULT '',
+            symptom             TEXT    DEFAULT '',
+            symptom_numerical   TEXT    DEFAULT '',
+            symptom_behavioral  TEXT    DEFAULT '',
+            symptom_error_pattern TEXT  DEFAULT '',
+            physics_cause       TEXT    DEFAULT '',
+            code_cause          TEXT    DEFAULT '',
+            root_cause          TEXT    DEFAULT '',
+            root_cause_chain    TEXT    DEFAULT '',
+            trigger_code        TEXT    DEFAULT '',
+            trigger_line        TEXT    DEFAULT '',
+            fix_type            TEXT    DEFAULT '',
+            fix_description     TEXT    DEFAULT '',
+            fix_keywords        TEXT    DEFAULT '[]',
+            fix_applied         TEXT    DEFAULT '',
+            original_code       TEXT    DEFAULT '',
+            original_code_raw   TEXT    DEFAULT '',
+            fixed_code          TEXT    DEFAULT '',
+            code_diff           TEXT    DEFAULT '',
+            fix_worked          INTEGER DEFAULT 1,
+            verification_criteria TEXT  DEFAULT '',
+            diagnostic_snippet  TEXT    DEFAULT '',
+            pattern_name        TEXT    DEFAULT '',
+            project_id          TEXT    DEFAULT '',
+            run_id              TEXT    DEFAULT '',
+            code_hash           TEXT    DEFAULT '',
+            code_length         INTEGER DEFAULT 0,
+            run_time_sec        REAL    DEFAULT 0.0,
+            meep_version        TEXT    DEFAULT '',
+            created_at          TEXT
+        )
+    """)
+    conn.commit()
+
+
+@app.post("/api/ingest/sim_error_unified")
+async def ingest_sim_error_unified(req: IngestSimErrorUnifiedRequest, _: None = Depends(verify_ingest_key)):
+    """
+    통합 시뮬레이션 에러 저장 엔드포인트.
+    sim_errors_unified 테이블(주)과 sim_errors 테이블(백패드)에 동시 저장.
+    ChromaDB sim_errors_unified 컬렉션에 벡터 저장.
+    """
+    import uuid, datetime as dt
+
+    run_id = f"{req.source}_{uuid.uuid4().hex[:8]}"
+    now    = dt.datetime.now().isoformat()
+
+    # ── 1. sim_errors_unified 테이블에 저장 (필수) ───────────────────────────
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        _ensure_sim_errors_unified_table(conn)
+        conn.execute("""
+            INSERT INTO sim_errors_unified (
+                origin_table, source,
+                run_mode, run_stage, iteration, mpi_np, device_type,
+                wavelength_um, resolution, pml_thickness, cell_size,
+                dim, uses_adjoint, uses_symmetry, run_mode_meta,
+                error_class, error_type, error_message, traceback_full,
+                symptom, symptom_numerical, symptom_behavioral, symptom_error_pattern,
+                physics_cause, code_cause, root_cause, root_cause_chain,
+                trigger_code, trigger_line,
+                fix_type, fix_description, fix_keywords, fix_applied,
+                original_code, original_code_raw, fixed_code, code_diff,
+                fix_worked, verification_criteria, diagnostic_snippet,
+                pattern_name, project_id, run_id,
+                code_hash, code_length, run_time_sec, meep_version, created_at
+            ) VALUES (
+                'pipeline', ?,
+                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?, ?
+            )
+        """, (
+            req.source[:50],
+            req.run_mode[:50], req.run_stage[:50], req.iteration, req.mpi_np, req.device_type[:50],
+            req.wavelength_um, req.resolution, req.pml_thickness, req.cell_size[:200],
+            req.dim, req.uses_adjoint, req.uses_symmetry, req.run_mode_meta[:500],
+            req.error_class[:100], req.error_type[:100], req.error_message[:5000], req.traceback_full[:5000],
+            req.symptom[:500], req.symptom_numerical[:500],
+            req.symptom_behavioral[:500], req.symptom_error_pattern[:500],
+            req.physics_cause[:500], req.code_cause[:500],
+            req.root_cause[:300], req.root_cause_chain[:1000],
+            req.trigger_code[:1000], req.trigger_line[:200],
+            req.fix_type[:100], req.fix_description[:1000], req.fix_keywords[:500],
+            (req.fix_description or req.fixed_code)[:300],
+            req.original_code[:5000], req.original_code_raw[:5000],
+            req.fixed_code[:5000], req.code_diff[:5000],
+            req.fix_worked, req.verification_criteria[:500], req.diagnostic_snippet[:2000],
+            req.pattern_name[:200], req.project_id or "unknown", run_id,
+            req.code_hash[:64], req.code_length, req.run_time_sec, req.meep_version[:20] or "", now,
+        ))
+        unified_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "id": None, "chroma_ok": False, "message": f"sim_errors_unified INSERT 실패: {e}"}
+
+    # ── 2. sim_errors 백패드 저장 (실패해도 무시) ────────────────────────────
+    try:
+        conn2 = sqlite3.connect(str(DB_PATH), timeout=10)
+        conn2.execute("""
+            INSERT INTO sim_errors
+              (run_id, project_id, error_type, error_message, meep_version,
+               context, root_cause, fix_applied, fix_worked,
+               fix_description, fix_keywords, pattern_name, source,
+               original_code, fixed_code, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            run_id,
+            req.project_id or "unknown",
+            req.error_type[:100],
+            req.error_message[:2000],
+            req.meep_version[:20] or "",
+            req.context[:500],
+            req.root_cause[:300],
+            (req.fix_description or req.fixed_code)[:300],
+            req.fix_worked,
+            req.fix_description[:1000],
+            req.fix_keywords[:500],
+            req.pattern_name[:200],
+            req.source[:50],
+            req.original_code[:5000],
+            req.fixed_code[:5000],
+            now,
+        ))
+        conn2.commit()
+        conn2.close()
+    except Exception:
+        pass  # 백패드 실패는 무시
+
+    # ── 3. ChromaDB sim_errors_unified 컬렉션에 벡터 저장 ───────────────────
+    chroma_ok = False
+    try:
+        client = _cache.get("chroma")
+        model  = _cache.get("model_1024") or _cache.get("model")
+        if client and model:
+            col  = client.get_or_create_collection("sim_errors_unified")
+            text = (
+                f"ERROR: {req.error_message[:500]}\n"
+                f"CAUSE: {req.root_cause[:200]}\n"
+                f"SYMPTOM: {req.symptom_numerical} {req.symptom_behavioral}\n"
+                f"FIX: {req.fix_description[:400]}"
+            )
+            emb = model.encode(text).tolist()
+            col.add(
+                ids=[f"seu_{unified_id}_{uuid.uuid4().hex[:6]}"],
+                embeddings=[emb],
+                documents=[text[:3000]],
+                metadatas=[{
+                    "error_type":   req.error_type,
+                    "source":       req.source,
+                    "run_mode":     req.run_mode,
+                    "resolution":   str(req.resolution),
+                    "fix_worked":   str(req.fix_worked),
+                    "created_at":   now,
+                }],
+            )
+            chroma_ok = True
+    except Exception:
+        pass
+
+    return {
+        "ok":       True,
+        "id":       unified_id,
+        "chroma_ok": chroma_ok,
+        "message":  f"sim_error_unified 저장 완료 (id={unified_id}, type={req.error_type})",
+    }
 
 
 # ── 실행 결과 저장 ─────────────────────────────────────────────────────────────
@@ -783,13 +1142,89 @@ async def diagnose(request: Request, req: DiagnoseRequest):
 
     from diagnose_engine import (
         parse_error, search_db, search_vector,
-        extract_physics_context, build_physics_diagnosis_prompt,
+        extract_physics_context, check_physics_issues,
+        build_physics_diagnosis_prompt,
+        extract_fixed_code,
         check_mpi_deadlock_risk,
         diagnose as _diagnose_full,
     )
 
     code  = req.code.strip()
     error = req.error.strip()
+
+    # ── -1. 개념/물리 질문 감지 → /api/search로 라우팅 ──────────────────────────
+    # error 필드에 에러 메시지가 아닌 질문/개념이 입력된 경우 처리
+    _concept_signals = (
+        error.endswith("?") or
+        any(error.lower().startswith(kw) for kw in
+            ("what ", "how ", "why ", "when ", "which ", "explain ", "describe ",
+             "what is", "how do", "how to", "what are", "how does",
+             "무엇", "어떻게", "왜", "언제", "설명해", "차이", "차이점",
+             "difference", "compare", "best practice", "recommend")) or
+        (not any(err in error for err in
+                 ("Error", "error", "Exception", "Traceback", "Warning",
+                  "NaN", "diverge", "timeout", "assert", "failed", "cannot",
+                  "AttributeError", "TypeError", "ValueError", "RuntimeError",
+                  "ModuleNotFoundError", "ImportError", "SyntaxError")) and
+         len(error) > 10 and not code)  # 코드도 없고 에러패턴도 없으면 개념 질문
+    )
+
+    if _concept_signals:
+        # 개념 질문 → search_executor + LLM 경로로 처리
+        try:
+            search_result = _run_search(error, n=req.n)
+            raw_results   = search_result.get("results", [])
+            # _run_search가 생성한 LLM 답변 우선 사용
+            concept_answer = search_result.get("answer") or ""
+        except Exception as _se:
+            raw_results    = []
+            concept_answer = ""
+
+        # LLM으로 개념 답변 생성 (search에서 답변 못 했을 때만)
+        if not concept_answer:
+            try:
+                import anthropic as _ant
+                import os as _os
+                _ant_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+                if _ant_key:
+                    _cli = _ant.Anthropic(api_key=_ant_key)
+                    _msg = _cli.messages.create(
+                        model="claude-haiku-4-5",
+                        max_tokens=600,
+                        messages=[{"role": "user", "content":
+                            f"You are a MEEP FDTD simulation expert. Answer concisely in the same language as the question:\n\n{error}\n\n"
+                            f"Focus on practical MEEP usage with code examples if relevant."}]
+                    )
+                    concept_answer = _msg.content[0].text
+            except Exception as _llm_e:
+                concept_answer = f"[LLM 오류: {str(_llm_e)[:100]}]"
+
+        suggestions = []
+        for r in raw_results[:req.n]:
+            try:
+                score = float(r.get("score", 0.5))
+            except (TypeError, ValueError):
+                score = 0.5
+            suggestions.append({
+                "title":    r.get("title", r.get("category", "")),
+                "cause":    r.get("snippet", r.get("cause", r.get("content", ""))[:400]),
+                "solution": r.get("solution", r.get("url", "")),
+                "code":     r.get("code", ""),
+                "score":    score,
+                "source":   r.get("source", "docs"),
+                "type":     "concept",
+            })
+
+        return {
+            "is_concept_question": True,
+            "query":        error,
+            "llm_answer":   concept_answer,
+            "suggestions":  suggestions,
+            "top_score":    suggestions[0]["score"] if suggestions else 0,
+            "db_sufficient":bool(suggestions),
+            "physics_issues": [],
+            "mpi_risk":     None,
+        }
 
     # ── 0. MPI deadlock 사전 검토 (코드 있을 때만) ──────────────────────────
     mpi_check_result = None
@@ -799,6 +1234,7 @@ async def diagnose(request: Request, req: DiagnoseRequest):
     # ── 1. 에러 정보 파싱 ────────────────────────────────────────────────────
     error_info = parse_error(code, error)
     phys_ctx   = extract_physics_context(code)
+    physics_issues = check_physics_issues(code, phys_ctx)
 
     # ── 2. DB 검색 ───────────────────────────────────────────────────────────
     db_results = search_db(error_info, code, error, n=req.n)
@@ -832,31 +1268,245 @@ async def diagnose(request: Request, req: DiagnoseRequest):
             api_key = os.environ.get("ANTHROPIC_API_KEY","")
             if api_key:
                 prompt = build_physics_diagnosis_prompt(
-                    code, error, error_info, combined[:3], phys_ctx
+                    code, error, error_info, combined[:3], phys_ctx,
+                    physics_issues=physics_issues,
                 )
                 client_llm = anthropic.Anthropic(api_key=api_key)
                 msg = client_llm.messages.create(
-                    model="claude-3-5-haiku-20241022",
-                    max_tokens=1500,
+                    model="claude-sonnet-4-6",
+                    max_tokens=4096,
                     messages=[{"role": "user", "content": prompt}],
                 )
+                answer_text = msg.content[0].text
                 llm_result = {
                     "available": True,
-                    "answer": msg.content[0].text,
+                    "answer": answer_text,
+                    "fixed_code": extract_fixed_code(answer_text, code),
                 }
         except Exception as e:
             llm_result = {"available": False, "answer": "", "error": str(e)}
 
+    # fixed_code: LLM 우선, 없으면 DB에서
+    fixed_code = llm_result.get("fixed_code")
+    if not fixed_code:
+        for r in combined:
+            if r.get("code") and len(r["code"]) > max(len(code) * 0.3, 100):
+                fixed_code = r["code"]
+                break
+
+    # 단계별 진단 프레임워크
+    from diagnose_engine import detect_stage
+    stages = detect_stage(code, error)
+    diagnostic_stages = stages[:2] if stages else []
+    primary_stage = stages[0] if stages else None
+
+    return {
+        "error_info":        error_info,
+        "suggestions":       combined[:req.n],
+        "db_sufficient":     db_sufficient,
+        "top_score":         round(top_score, 3),
+        "physics_context":   phys_ctx,
+        "physics_issues":    physics_issues,
+        "fixed_code":        fixed_code,
+        "llm_result":        llm_result,
+        "mpi_check":         mpi_check_result,
+        "db_count":          len(db_results),
+        "vec_count":         len(vec_results),
+        "diagnostic_stages": diagnostic_stages,
+        "primary_stage":     primary_stage,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# /api/diagnose/fix-and-run  — 수정 코드 생성 + Docker 실행 검증
+# ══════════════════════════════════════════════════════════════════════════════
+
+class FixAndRunRequest(BaseModel):
+    code:        str = ""
+    error:       str = ""
+    run_timeout: int = 60   # Docker 실행 최대 시간(초)
+
+
+@app.post("/api/diagnose/fix-and-run")
+@limiter.limit("20/minute")
+async def diagnose_fix_and_run(request: Request, req: FixAndRunRequest):
+    """
+    MEEP 코드 + 에러 → 진단 → 수정 코드 생성 → Docker 실행 검증.
+
+    1. /api/diagnose 로직으로 fixed_code 획득
+    2. Docker 컨테이너에서 경량 실행 (resolution=10, until=20)
+    3. 실패 시 run_stderr로 2차 진단 (최대 1회 재시도)
+    4. 결과 반환
+
+    Returns:
+        diagnose 결과 + run_result + retry_result (실패 시)
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(BASE / "api"))
+
+    from diagnose_engine import (
+        parse_error, search_db, search_vector,
+        extract_physics_context, check_physics_issues,
+        build_physics_diagnosis_prompt, extract_fixed_code,
+        check_mpi_deadlock_risk,
+    )
+    from fix_runner import run_fixed_code
+    from context_validator import validate_patch_context
+
+    code  = req.code.strip()
+    error = req.error.strip()
+    timeout = min(max(req.run_timeout, 10), 120)  # 10~120초 클램프
+
+    if not code and not error:
+        return {"error": "code 또는 error를 입력하세요."}
+
+    # ── 1단계: 진단 + fixed_code 획득 ──────────────────────────────────────
+    error_info     = parse_error(code, error)
+    phys_ctx       = extract_physics_context(code)
+    physics_issues = check_physics_issues(code, phys_ctx)
+    db_results     = search_db(error_info, code, error, n=5)
+
+    query_v = f"{error_info['primary_type']} {error[:200]} {' '.join(error_info['meep_keywords'][:3])}"
+    vec_results = search_vector(
+        query_v, n=3,
+        model=_cache.get("model") or _cache.get("model_1024"),
+        client=_cache.get("chroma"),
+    )
+
+    seen, combined = set(), []
+    for r in db_results + vec_results:
+        key = (r.get("title","") + r.get("cause",""))[:80]
+        if key not in seen:
+            seen.add(key); combined.append(r)
+    combined.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    top_score    = combined[0]["score"] if combined else 0
+    db_sufficient = top_score >= 0.65 and len(combined) >= 2
+
+    # LLM으로 fixed_code 생성
+    fixed_code   = None
+    llm_result   = {"available": False, "answer": ""}
+    if not db_sufficient and (code or error):
+        try:
+            import anthropic, os as _os
+            api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+            if api_key:
+                prompt = build_physics_diagnosis_prompt(
+                    code, error, error_info, combined[:3], phys_ctx,
+                    physics_issues=physics_issues,
+                )
+                client_llm = anthropic.Anthropic(api_key=api_key)
+                msg = client_llm.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                answer_text = msg.content[0].text
+                fixed_code  = extract_fixed_code(answer_text, code)
+                llm_result  = {
+                    "available": True,
+                    "answer": answer_text,
+                    "fixed_code": fixed_code,
+                }
+        except Exception as e:
+            llm_result = {"available": False, "answer": "", "error": str(e)}
+
+    # DB에서 fixed_code 보완
+    if not fixed_code:
+        for r in combined:
+            if r.get("code") and len(r["code"]) > max(len(code) * 0.3, 100):
+                fixed_code = r["code"]; break
+
+    # ── 2단계: Docker 실행 검증 ─────────────────────────────────────────────
+    run_result = None
+    retry_result = None
+    context_validation = None
+    retry_context_validation = None
+
+    if fixed_code:
+        context_validation = validate_patch_context(fixed_code, {
+            "error_info": error_info,
+            "physics_context": phys_ctx,
+            "physics_issues": physics_issues,
+            "source": "initial_fix",
+        })
+
+        if context_validation.get("passed", False):
+            run_result = run_fixed_code(fixed_code, timeout=timeout)
+        else:
+            run_result = {
+                "success": False,
+                "stdout": "",
+                "stderr": "[BLOCKED] context validator blocked execution",
+                "exit_code": -3,
+                "elapsed_s": 0.0,
+                "safe_code": "",
+                "blocked": True,
+                "block_reason": "context_validation_hard_fail",
+                "validation": context_validation,
+            }
+
+        # ── 3단계: 실패 시 1회 재시도 ──────────────────────────────────────
+        if not run_result["success"] and not run_result.get("blocked"):
+            run_err = run_result.get("stderr", "") + run_result.get("stdout", "")
+            if run_err and (code or error):
+                try:
+                    api_key = __import__("os").environ.get("ANTHROPIC_API_KEY", "")
+                    if api_key:
+                        retry_error_info = parse_error(fixed_code, run_err)
+                        retry_phys       = extract_physics_context(fixed_code)
+                        retry_issues     = check_physics_issues(fixed_code, retry_phys)
+                        retry_prompt     = build_physics_diagnosis_prompt(
+                            fixed_code, run_err, retry_error_info, combined[:2],
+                            retry_phys, physics_issues=retry_issues,
+                        )
+                        client_llm2 = __import__("anthropic").Anthropic(api_key=api_key)
+                        msg2 = client_llm2.messages.create(
+                            model="claude-sonnet-4-6",
+                            max_tokens=4096,
+                            messages=[{"role": "user", "content": retry_prompt}],
+                        )
+                        retry_answer  = msg2.content[0].text
+                        retry_fixed   = extract_fixed_code(retry_answer, fixed_code)
+                        if retry_fixed:
+                            retry_context_validation = validate_patch_context(retry_fixed, {
+                                "error_info": retry_error_info,
+                                "physics_context": retry_phys,
+                                "physics_issues": retry_issues,
+                                "source": "retry_fix",
+                            })
+                            if retry_context_validation.get("passed", False):
+                                retry_result = run_fixed_code(retry_fixed, timeout=timeout)
+                            else:
+                                retry_result = {
+                                    "success": False,
+                                    "stdout": "",
+                                    "stderr": "[BLOCKED] context validator blocked retry execution",
+                                    "exit_code": -3,
+                                    "elapsed_s": 0.0,
+                                    "safe_code": "",
+                                    "blocked": True,
+                                    "block_reason": "context_validation_hard_fail",
+                                    "validation": retry_context_validation,
+                                }
+                            retry_result["llm_answer"] = retry_answer
+                            retry_result["fixed_code"] = retry_fixed
+                except Exception:
+                    pass
+
     return {
         "error_info":      error_info,
-        "suggestions":     combined[:req.n],
+        "physics_issues":  physics_issues,
+        "physics_context": phys_ctx,
         "db_sufficient":   db_sufficient,
         "top_score":       round(top_score, 3),
-        "physics_context": phys_ctx,
         "llm_result":      llm_result,
-        "mpi_check":       mpi_check_result,
-        "db_count":        len(db_results),
-        "vec_count":       len(vec_results),
+        "fixed_code":      fixed_code,
+        "context_validation": context_validation,
+        "run_result":      run_result,
+        "retry_context_validation": retry_context_validation,
+        "retry_result":    retry_result,
+        "suggestions":     combined[:5],
     }
 
 
@@ -867,6 +1517,7 @@ async def diagnose(request: Request, req: DiagnoseRequest):
 class ConceptRequest(BaseModel):
     query: str          # "PML이 뭐야", "EigenmodeSource 설명"
     include_code: bool = True
+
     include_images: bool = True
 
 
@@ -1074,3 +1725,421 @@ async def stats_errors():
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+# ── /api/topo — Topology Optimization endpoints ──────────────────────────────
+
+@app.post("/api/topo/runs")
+async def create_topo_run(data: dict):
+    """Create or upsert a topology optimization run record"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        conn.execute(
+            """INSERT INTO topo_opt_runs
+               (run_id, paper_id, device_type, optimizer, n_phases_completed,
+                fom_init, fom_final, fom_paper, closure_pct, status,
+                error_phase, error_type, resolution, beta_schedule,
+                meep_version, mpi_ranks, elapsed_s, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(run_id) DO UPDATE SET
+                 n_phases_completed=excluded.n_phases_completed,
+                 fom_final=excluded.fom_final,
+                 closure_pct=excluded.closure_pct,
+                 status=excluded.status,
+                 error_phase=excluded.error_phase,
+                 error_type=excluded.error_type,
+                 elapsed_s=excluded.elapsed_s,
+                 notes=excluded.notes""",
+            (
+                data.get("run_id"), data.get("paper_id"), data.get("device_type"),
+                data.get("optimizer"), data.get("n_phases_completed", 0),
+                data.get("fom_init"), data.get("fom_final"), data.get("fom_paper"),
+                data.get("closure_pct"), data.get("status", "running"),
+                data.get("error_phase"), data.get("error_type"),
+                data.get("resolution"), data.get("beta_schedule"),
+                data.get("meep_version"), data.get("mpi_ranks", 1),
+                data.get("elapsed_s"), data.get("notes"),
+            )
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True, "run_id": data.get("run_id")}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/topo/runs")
+async def list_topo_runs(paper_id: str = None, status: str = None, limit: int = 100):
+    """List topology optimization runs, optionally filtered"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        where_clauses = []
+        params = []
+        if paper_id:
+            where_clauses.append("paper_id=?")
+            params.append(paper_id)
+        if status:
+            where_clauses.append("status=?")
+            params.append(status)
+        where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        params.append(limit)
+        rows = conn.execute(
+            f"""SELECT run_id, paper_id, device_type, optimizer, n_phases_completed,
+                       fom_init, fom_final, fom_paper, closure_pct, status,
+                       error_phase, error_type, resolution, meep_version,
+                       mpi_ranks, elapsed_s, created_at
+                FROM topo_opt_runs {where}
+                ORDER BY created_at DESC LIMIT ?""",
+            params
+        ).fetchall()
+        conn.close()
+        cols = ["run_id","paper_id","device_type","optimizer","n_phases_completed",
+                "fom_init","fom_final","fom_paper","closure_pct","status",
+                "error_phase","error_type","resolution","meep_version",
+                "mpi_ranks","elapsed_s","created_at"]
+        return {"total": len(rows), "runs": [dict(zip(cols, r)) for r in rows]}
+    except Exception as e:
+        return {"error": str(e), "total": 0, "runs": []}
+
+
+@app.get("/api/topo/runs/{run_id}")
+async def get_topo_run(run_id: str):
+    """Get a single topology optimization run by run_id"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        row = conn.execute(
+            "SELECT * FROM topo_opt_runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+        if not row:
+            conn.close()
+            return {"error": "not found"}
+        cols = [d[0] for d in conn.execute("SELECT * FROM topo_opt_runs LIMIT 0").description]
+        conn.close()
+        return dict(zip(cols, row))
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/topo/phases")
+async def create_topo_phase(data: dict):
+    """Log a topology optimization phase result"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        conn.execute(
+            """INSERT INTO topo_opt_phases
+               (run_id, paper_id, device_type, phase_id, phase_name, status,
+                error_type, error_msg, physics_issues, fom_value, grad_norm,
+                input_flux, elapsed_s, stdout_tail)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                data.get("run_id"), data.get("paper_id"), data.get("device_type"),
+                data.get("phase_id"), data.get("phase_name"), data.get("status"),
+                data.get("error_type"), data.get("error_msg"),
+                data.get("physics_issues"), data.get("fom_value"),
+                data.get("grad_norm"), data.get("input_flux"),
+                data.get("elapsed_s"), data.get("stdout_tail"),
+            )
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/topo/phases/{run_id}")
+async def get_topo_phases(run_id: str):
+    """Get all phases for a topology optimization run"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        rows = conn.execute(
+            """SELECT phase_id, phase_name, status, error_type, error_msg,
+                      physics_issues, fom_value, grad_norm, input_flux,
+                      elapsed_s, created_at
+               FROM topo_opt_phases WHERE run_id=? ORDER BY phase_id""",
+            (run_id,)
+        ).fetchall()
+        conn.close()
+        cols = ["phase_id","phase_name","status","error_type","error_msg",
+                "physics_issues","fom_value","grad_norm","input_flux",
+                "elapsed_s","created_at"]
+        return {"run_id": run_id, "phases": [dict(zip(cols, r)) for r in rows]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/topo/iterations")
+async def log_topo_iterations(data: dict):
+    """Bulk-insert topology optimization iteration data"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        iterations = data.get("iterations", [])
+        run_id = data.get("run_id")
+        paper_id = data.get("paper_id")
+        phase_id = data.get("phase_id", 6)
+        conn.executemany(
+            """INSERT INTO topo_opt_iterations
+               (run_id, paper_id, phase_id, iteration, beta, fom,
+                fom_delta, grad_norm, design_hash)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            [
+                (
+                    run_id, paper_id, phase_id,
+                    it.get("iteration"), it.get("beta"), it.get("fom"),
+                    it.get("fom_delta"), it.get("grad_norm"), it.get("design_hash"),
+                )
+                for it in iterations
+            ]
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True, "inserted": len(iterations)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/topo/iterations/{run_id}")
+async def get_topo_iterations(run_id: str, phase_id: int = None, limit: int = 500):
+    """Get iteration history for a topology optimization run"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        params = [run_id]
+        phase_filter = ""
+        if phase_id is not None:
+            phase_filter = "AND phase_id=?"
+            params.append(phase_id)
+        params.append(limit)
+        rows = conn.execute(
+            f"""SELECT phase_id, iteration, beta, fom, fom_delta, grad_norm,
+                       design_hash, created_at
+                FROM topo_opt_iterations
+                WHERE run_id=? {phase_filter}
+                ORDER BY phase_id, iteration LIMIT ?""",
+            params
+        ).fetchall()
+        conn.close()
+        cols = ["phase_id","iteration","beta","fom","fom_delta","grad_norm",
+                "design_hash","created_at"]
+        return {"run_id": run_id, "count": len(rows),
+                "iterations": [dict(zip(cols, r)) for r in rows]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/topo/stats")
+async def topo_stats():
+    """Summary statistics for all topology optimization runs"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
+        total = conn.execute("SELECT COUNT(*) FROM topo_opt_runs").fetchone()[0]
+        by_status = conn.execute(
+            "SELECT status, COUNT(*) FROM topo_opt_runs GROUP BY status"
+        ).fetchall()
+        by_device = conn.execute(
+            "SELECT device_type, COUNT(*) FROM topo_opt_runs GROUP BY device_type ORDER BY 2 DESC LIMIT 20"
+        ).fetchall()
+        avg_closure = conn.execute(
+            "SELECT AVG(closure_pct) FROM topo_opt_runs WHERE closure_pct IS NOT NULL"
+        ).fetchone()[0]
+        recent = conn.execute(
+            """SELECT run_id, paper_id, device_type, status, closure_pct, created_at
+               FROM topo_opt_runs ORDER BY created_at DESC LIMIT 10"""
+        ).fetchall()
+        conn.close()
+        return {
+            "total_runs": total,
+            "by_status": [{"status": r[0], "count": r[1]} for r in by_status],
+            "by_device": [{"device_type": r[0], "count": r[1]} for r in by_device],
+            "avg_closure_pct": round(avg_closure, 2) if avg_closure else None,
+            "recent": [
+                {"run_id": r[0], "paper_id": r[1], "device_type": r[2],
+                 "status": r[3], "closure_pct": r[4], "created_at": r[5]}
+                for r in recent
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# /api/ingest/verified_fix  — 실행 검증된 에러 수정 사례 등록
+# ══════════════════════════════════════════════════════════════════════════════
+
+class VerifiedFixIngest(BaseModel):
+    # 필수
+    purpose: str
+    original_code: str
+    fixed_code: str
+    exec_exit_code: int
+
+    # 에러 정보
+    error_output: Optional[str] = None
+    error_type: Optional[str] = None
+    error_pattern: Optional[str] = None
+
+    # 실행 결과
+    exec_stdout: Optional[str] = None
+    exec_stderr: Optional[str] = None
+    exec_run_time: Optional[float] = None
+    exec_images: Optional[List[str]] = None
+
+    # 수정 정보
+    fix_description: Optional[str] = None
+    code_diff: Optional[str] = None
+
+    # 수치 검증 기준
+    T_min: Optional[float] = None
+    T_max: Optional[float] = None
+    R_max: Optional[float] = None
+    TR_sum_min: Optional[float] = None
+    TR_sum_max: Optional[float] = None
+    FOM_threshold: Optional[float] = None
+
+    # 메타
+    purpose_tags: Optional[List[str]] = None
+    meep_version: Optional[str] = "1.28.0"
+    mpi_np: Optional[int] = 1
+    resolution: Optional[int] = None
+    sim_params: Optional[dict] = None
+    source: Optional[str] = "manual"
+    project_id: Optional[str] = None
+    manual_verified: Optional[int] = 0
+    verified_by: Optional[str] = None
+
+
+@app.post("/api/ingest/verified_fix")
+async def ingest_verified_fix(req: VerifiedFixIngest):
+    """
+    실행 검증된 에러 수정 사례를 코퍼스에 등록.
+    exec_exit_code=0 이어야 등록 가능.
+    """
+    import re, datetime
+
+    # 실행 성공 여부 체크
+    if req.exec_exit_code != 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"exec_exit_code={req.exec_exit_code}: 실행 성공(0)한 경우만 등록 가능합니다."
+        )
+
+    # 자동 수치 검증
+    auto_passed = 1  # 기본 통과 (수치 기준 없으면 통과로 간주)
+    if req.exec_stdout:
+        # T, R 파싱 시도
+        t_match = re.search(r'[Tt]ransmittance[^\d]*([\d.]+)', req.exec_stdout)
+        r_match = re.search(r'[Rr]eflectance[^\d]*([\d.]+)', req.exec_stdout)
+        fom_match = re.search(r'FOM[^\d]*([\d.]+)', req.exec_stdout)
+
+        t_val = float(t_match.group(1)) if t_match else None
+        r_val = float(r_match.group(1)) if r_match else None
+        fom_val = float(fom_match.group(1)) if fom_match else None
+
+        # 수치 기준 체크
+        if req.T_min is not None and t_val is not None and t_val < req.T_min:
+            auto_passed = 0
+        if req.T_max is not None and t_val is not None and t_val > req.T_max:
+            auto_passed = 0
+        if req.R_max is not None and r_val is not None and r_val > req.R_max:
+            auto_passed = 0
+        if req.TR_sum_min is not None and t_val is not None and r_val is not None:
+            if t_val + r_val < req.TR_sum_min:
+                auto_passed = 0
+        if req.TR_sum_max is not None and t_val is not None and r_val is not None:
+            if t_val + r_val > req.TR_sum_max:
+                auto_passed = 0
+        if req.FOM_threshold is not None and fom_val is not None and fom_val < req.FOM_threshold:
+            auto_passed = 0
+
+    conn = sqlite3.connect(str(DB_PATH), timeout=10)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO verified_fixes (
+            purpose, purpose_tags,
+            original_code, error_output, error_type, error_pattern,
+            fixed_code, fix_description, code_diff,
+            exec_stdout, exec_stderr, exec_exit_code, exec_run_time, exec_images,
+            T_min, T_max, R_max, TR_sum_min, TR_sum_max, FOM_threshold,
+            auto_passed, manual_verified, verified_by, verified_at,
+            meep_version, mpi_np, resolution, sim_params, source, project_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        req.purpose,
+        json.dumps(req.purpose_tags, ensure_ascii=False) if req.purpose_tags else None,
+        req.original_code,
+        req.error_output,
+        req.error_type,
+        req.error_pattern,
+        req.fixed_code,
+        req.fix_description,
+        req.code_diff,
+        req.exec_stdout,
+        req.exec_stderr,
+        req.exec_exit_code,
+        req.exec_run_time,
+        json.dumps(req.exec_images) if req.exec_images else None,
+        req.T_min, req.T_max, req.R_max, req.TR_sum_min, req.TR_sum_max, req.FOM_threshold,
+        auto_passed,
+        req.manual_verified,
+        req.verified_by,
+        datetime.datetime.now().isoformat() if req.manual_verified else None,
+        req.meep_version,
+        req.mpi_np,
+        req.resolution,
+        json.dumps(req.sim_params, ensure_ascii=False) if req.sim_params else None,
+        req.source,
+        req.project_id,
+    ))
+    new_id = c.lastrowid
+    conn.commit()
+
+    # FTS 업데이트
+    try:
+        c.execute("""
+            INSERT INTO verified_fixes_fts(rowid, purpose, error_pattern, fix_description, error_output)
+            VALUES (?, ?, ?, ?, ?)
+        """, (new_id, req.purpose, req.error_pattern or "", req.fix_description or "", req.error_output or ""))
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+
+    return {
+        "id": new_id,
+        "auto_passed": auto_passed,
+        "message": f"verified_fix #{new_id} 등록 완료 (auto_passed={auto_passed})"
+    }
+
+
+@app.get("/api/verified_fixes")
+async def list_verified_fixes(
+    limit: int = 20,
+    only_passed: bool = False,
+    project_id: Optional[str] = None
+):
+    """검증된 수정 사례 목록 조회"""
+    conn = sqlite3.connect(str(DB_PATH), timeout=10)
+    c = conn.cursor()
+
+    conditions = []
+    params = []
+    if only_passed:
+        conditions.append("(auto_passed=1 OR manual_verified=1)")
+    if project_id:
+        conditions.append("project_id=?")
+        params.append(project_id)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    params.append(limit)
+
+    c.execute(f"""
+        SELECT id, purpose, error_type, error_pattern, fix_description,
+               auto_passed, manual_verified, source, project_id, created_at
+        FROM verified_fixes
+        {where}
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, params)
+
+    cols = [d[0] for d in c.description]
+    rows = [dict(zip(cols, r)) for r in c.fetchall()]
+    conn.close()
+    return {"total": len(rows), "items": rows}

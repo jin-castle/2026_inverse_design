@@ -1099,10 +1099,4 @@ function renderDiagnoseResult(data) {
   });
 }
 
-function escHtml(str) {
-  return (str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// escHtml is defined above (String-safe version with &#39; for single quotes)
