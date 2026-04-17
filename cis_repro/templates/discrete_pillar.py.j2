@@ -1,0 +1,47 @@
+"""
+[Design Region: discrete_pillar]
+Binary pillar_mask N×N → mp.Block geometry 변환
+
+[암묵지] 좌표 변환 법칙:
+  i = 행 인덱스 (위→아래, 0=맨위)
+  j = 열 인덱스 (왼→오른, 0=맨왼)
+  px = -N/2*w + j*w + w/2  → j가 클수록 +x (오른쪽)
+  py = N/2*w - i*w - w/2   → i가 클수록 -y (아래쪽), 반전 필수!
+"""
+
+w  = {{ tile_w }}   # μm. pillar 타일 한 변 크기
+Nx = {{ grid_n }}   # pillar grid 가로 수
+Ny = {{ grid_n }}   # pillar grid 세로 수
+
+# [암묵지] pillar mask: 논문에서 역설계된 binary 배열
+# 1=pillar 있음({{ material_name }}), 0=없음(Air)
+pillar_mask = {{ pillar_mask }}
+
+# ─── 좌표 계산 + 경계 검증 + geometry 추가 ──────────────────────────────────
+_oob_count = 0
+_total = 0
+for _i in range(Ny):
+    for _j in range(Nx):
+        if pillar_mask[_i][_j] == 1:
+            # [암묵지] j→+x, i→-y (반전): 이미지 좌표 → MEEP 좌표
+            _px = round(-Nx/2 * w + _j * w + w/2, 3)
+            _py = round( Ny/2 * w - _i * w - w/2, 3)
+
+            # [암묵지] 경계 clamp: pillar가 주기 셀 밖으로 나가면 안 됨
+            if abs(_px) > Sx/2 - w/2 * 0.5:
+                _oob_count += 1
+                _px = float(np.clip(_px, -Sx/2 + w/2, Sx/2 - w/2))
+            if abs(_py) > Sy/2 - w/2 * 0.5:
+                _oob_count += 1
+                _py = float(np.clip(_py, -Sy/2 + w/2, Sy/2 - w/2))
+
+            geometry.append(mp.Block(
+                size=mp.Vector3(w, w, Layer_thickness),
+                center=mp.Vector3(_px, _py, z_meta),
+                material={{ material_name }},
+            ))
+            _total += 1
+
+if _oob_count > 0:
+    print(f"[WARNING] {_oob_count}개 pillar가 경계 초과 → clamp 적용")
+print(f"[Pillars] {_total}/{Nx*Ny}개 ({100*_total/(Nx*Ny):.1f}% fill)")

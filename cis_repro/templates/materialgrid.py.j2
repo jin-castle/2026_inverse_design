@@ -1,0 +1,120 @@
+"""
+[Design Region: materialgrid]
+MaterialGrid 기반 연속 역설계 구조 — 최적화된 가중치 파일에서 로드
+
+[암묵지]
+- MaterialGrid는 0~1 사이 연속값으로 Air↔material 보간
+- grid_type="U_MEAN": 픽셀 평균값 사용 (이산화에 유리)
+- do_averaging=False: 추가 eps averaging 비활성 (discrete pillar와 동일 이유)
+- 다층 구조: EL_thickness 스페이서로 레이어 분리
+- 가중치 파일: Layer1.txt (단층), Layer1.txt + Layer2.txt (2층)
+"""
+
+import meep.adjoint as mpa
+
+# ─── 레이어별 격자 해상도 ──────────────────────────────────────────
+# [암묵지] Nx = resolution * design_region + 1 (격자점 수)
+# 논문 resolution과 동일해야 가중치 파일 크기와 일치
+Nx = int(round(resolution * design_region_x)) + 1
+Ny = int(round(resolution * design_region_y)) + 1
+
+{% for k in range(1, n_layers + 1) %}
+# ─── Layer {{ k }} ────────────────────────────────────────────────
+# [암묵지] 가중치 파일 경로: 논문 코드와 동일 디렉토리에 위치해야 함
+_weights_{{ k }} = np.loadtxt('{{ weights_dir }}/Layer{% if n_layers == 1 %}1{% else %}{{ k }}{% endif %}.txt')
+
+# [암묵지] MaterialGrid: Air(0) ↔ {{ material_name }}(1) 연속 보간
+# grid_type="U_MEAN" = 격자 셀 평균값 → 이산화 단계에서 필요
+# do_averaging=False = Yee 격자 보간 없음 (eps_averaging=False와 동일 원칙)
+_dv_{{ k }} = mp.MaterialGrid(
+    mp.Vector3(Nx, Ny),
+    Air,
+    {{ material_name }},
+    grid_type="U_MEAN",
+    do_averaging=False,
+)
+_dv_{{ k }}.update_weights(_weights_{{ k }})
+
+{% if k == 1 %}
+# Layer 1: 메타서피스 최상단 레이어
+_z_layer_{{ k }} = round(Sz/2 - Lpml - pml_2_src - src_2_geo - Layer_thickness/2, 3)
+{% else %}
+# Layer {{ k }}: EL_thickness 스페이서 아래 레이어
+# [암묵지] EL_thickness = 레이어간 동일 재료(예: SiN) 스페이서 두께
+_z_layer_{{ k }} = round(
+    Sz/2 - Lpml - pml_2_src - src_2_geo
+    - ({{ k - 1 }} * Layer_thickness + ({{ k - 1 }}) * EL_thickness)
+    - Layer_thickness/2, 3
+)
+{% endif %}
+
+_dr_{{ k }} = mpa.DesignRegion(
+    _dv_{{ k }},
+    volume=mp.Volume(
+        center=mp.Vector3(0, 0, _z_layer_{{ k }}),
+        size=mp.Vector3(design_region_x, design_region_y, Layer_thickness),
+    ),
+)
+# [암묵지] DesignRegion을 geometry에 Block으로 추가
+# material=_dv_{{ k }} 로 설정해야 MaterialGrid가 eps에 반영됨
+geometry.append(mp.Block(
+    center=_dr_{{ k }}.center,
+    size=_dr_{{ k }}.size,
+    material=_dv_{{ k }},
+))
+
+{% endfor %}
+
+{% if n_layers > 1 %}
+# ─── 레이어간 스페이서 (EL_thickness) ────────────────────────────
+{% for k in range(1, n_layers) %}
+# [암묵지] 스페이서 재료: 논문에 따라 SiN 또는 Air
+# 위치: Layer {{ k }} 하단 ~ Layer {{ k + 1 }} 상단 사이
+_z_spacer_{{ k }} = round(
+    Sz/2 - Lpml - pml_2_src - src_2_geo
+    - {{ k }} * Layer_thickness
+    - EL_thickness / 2, 3
+)
+geometry.insert(3 + {{ k - 1 }}, mp.Block(
+    center=mp.Vector3(0, 0, _z_spacer_{{ k }}),
+    size=mp.Vector3(Sx, Sy, EL_thickness),
+    material={{ spacer_material }},  # SiN 또는 논문 명시 재료
+))
+{% endfor %}
+{% endif %}
+
+# OptimizationProblem에 design_regions 등록
+# [암묵지] 역설계 없이 순방향 시뮬만 할 때도 DesignRegion을 등록해야
+# opt.plot2D()가 설계 영역을 올바르게 시각화함
+_design_regions = [{% for k in range(1, n_layers + 1) %}_dr_{{ k }}{% if not loop.last %}, {% endif %}{% endfor %}]
+
+sim = mp.Simulation(
+    cell_size=cell_size,
+    boundary_layers=pml_layers,
+    geometry=geometry,
+    sources=source,
+    default_material=Air,
+    resolution=resolution,
+    k_point=mp.Vector3(0, 0, 0),
+    # [암묵지] MaterialGrid에서는 eps_averaging=True도 가능하나
+    # 논문 재현 정확도를 위해 False 유지 (논문 코드와 동일)
+    eps_averaging=False,
+    extra_materials=[SiO2, {{ material_name }}],
+)
+
+opt = mpa.OptimizationProblem(
+    simulation=sim,
+    objective_functions=[],
+    objective_arguments=[],
+    design_regions=_design_regions,
+    frequencies=frequencies_rgb,
+    decay_by={{ decay_by | default('1e-3') }},
+    maximum_run_time=600,
+    minimum_run_time=10,
+)
+
+print(f"[MaterialGrid] {{{ n_layers }}}레이어 로드 완료 | Nx={Nx} Ny={Ny}")
+{% for k in range(1, n_layers + 1) %}
+print(f"  Layer {{ k }}: {_weights_{{ k }}.sum():.0f}/{Nx*Ny} 픽셀 활성화 "
+      f"({100*_weights_{{ k }}.sum()/(Nx*Ny):.1f}% fill)")
+{% endfor %}

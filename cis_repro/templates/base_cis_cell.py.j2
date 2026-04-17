@@ -1,0 +1,161 @@
+"""
+CIS Color Router MEEP 재현 스크립트
+논문: {{ paper_title }}
+생성: {{ generated_at }}
+
+[암묵지 요약]
+- k_point=(0,0,0): Bayer 주기 배열 → 주기 경계 필수
+- eps_averaging=False: 이산 pillar의 sharp edge 보존
+- PML Z방향만: X,Y는 주기 경계와 공존 불가
+- GaussianSource: 단일 실행으로 RGB 전 대역 커버
+- Ex+Ey 동시: unpolarized 자연광 근사
+"""
+
+import meep as mp
+import meep.adjoint as mpa
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # [CRITICAL] 서버/Docker 환경: GUI 없음 → Agg backend 필수
+import matplotlib.pyplot as plt
+import os
+import json
+import time
+
+mp.verbosity(1)
+
+# ─── 단위 및 재료 ─────────────────────────────────────────────────────────────
+um_scale = 1   # 1 μm = 1 단위. 모든 길이 단위: μm
+
+Air  = mp.Medium(index=1.0)
+SiO2 = mp.Medium(index=1.45)   # 기판/커버 재료
+
+# [암묵지] {{ material_name }} 굴절률 {{ n_material }}
+# 논문 파장 범위(450~650nm)에서의 값. 분산 무시 (단순화).
+{{ material_name }} = mp.Medium(index={{ n_material }})
+
+# ─── 구조 파라미터 ────────────────────────────────────────────────────────────
+resolution       = {{ resolution }}      # px/μm. 최소 feature({{ min_feature_um }}μm) × resolution = {{ (min_feature_um * resolution)|round|int }}격자
+layer_num        = {{ n_layers }}        # 메타서피스 레이어 수
+Layer_thickness  = {{ layer_thickness }} # μm. 메타서피스 두께 (pillar 높이)
+FL_thickness     = {{ fl_thickness }}    # μm. Focal length (메타서피스→검출기 거리)
+EL_thickness     = {{ el_thickness }}    # μm. 레이어간 스페이서 (단층=0)
+SP_size          = {{ sp_size }}         # μm. 반픽셀 크기 (픽셀 = 2×SP_size)
+
+# ─── PML 및 간격 파라미터 ─────────────────────────────────────────────────────
+# [암묵지] Lpml ≥ λ_max/(2×n_min) = 0.8/2 = 0.4μm → 0.4 채택
+Lpml      = 0.4    # μm. PML 두께
+pml_2_src = 0.2    # μm. PML→소스 간격 (소스가 PML field에 닿지 않게)
+src_2_geo = 0.2    # μm. 소스→메타서피스 간격 (소스 near-field 분리)
+mon_2_pml = 0.4    # μm. 검출기모니터→PML 간격 (PML 노이즈 차단, Lpml과 같게)
+
+# ─── 셀 크기 자동 계산 ────────────────────────────────────────────────────────
+# [암묵지] design_region = 2×SP_size = 1 Bayer unit cell (4 서브픽셀)
+design_region_x = round(SP_size * 2, 3)
+design_region_y = round(SP_size * 2, 3)
+design_region_z = round(layer_num * Layer_thickness + EL_thickness, 3)
+
+Sx = design_region_x
+Sy = design_region_y
+# Sz = PML + gap + src + gap + meta + focal + mon_gap + PML
+Sz = round(Lpml + pml_2_src + src_2_geo + design_region_z + FL_thickness + mon_2_pml + Lpml, 3)
+
+cell_size = mp.Vector3(Sx, Sy, Sz)
+
+# ─── 핵심 Z좌표 계산 (항상 검증 필요) ────────────────────────────────────────
+z_src  = round(Sz/2 - Lpml - pml_2_src, 3)             # 소스 위치 (PML 아래)
+z_meta = round(Sz/2 - Lpml - pml_2_src - src_2_geo - design_region_z/2, 3)  # 메타서피스 중심
+z_fl   = round(Sz/2 - Lpml - pml_2_src - src_2_geo - design_region_z - FL_thickness/2, 3)
+z_sipd = round(Sz/2 - Lpml - pml_2_src - src_2_geo - design_region_z - FL_thickness - mon_2_pml/2 - Lpml/2, 3)
+z_mon  = round(-Sz/2 + Lpml + mon_2_pml - 1/resolution, 3)  # [암묵지] -1/res: 격자경계 회피
+z_refl = round(Sz/2 - Lpml - 1/resolution, 3)           # 반사 모니터 위치
+
+# ─── Z좌표 안전 검증 ─────────────────────────────────────────────────────────
+assert z_src > z_meta, f"소스({z_src})가 메타서피스({z_meta})보다 아래: Z좌표 오류"
+assert z_mon > -Sz/2 + Lpml, f"모니터({z_mon})가 PML 안에 있음: mon_2_pml 증가 필요"
+assert z_src < Sz/2 - Lpml, f"소스({z_src})가 PML 안에 있음: pml_2_src 증가 필요"
+
+# ─── PML 경계 조건 ────────────────────────────────────────────────────────────
+# [암묵지] direction=mp.Z 필수: X,Y는 k_point 주기 경계 사용
+pml_layers = [mp.PML(thickness=Lpml, direction=mp.Z)]
+
+# ─── 광원 ─────────────────────────────────────────────────────────────────────
+source_center = mp.Vector3(0, 0, z_src)
+source_size   = mp.Vector3(Sx, Sy, 0)   # XY plane wave
+
+# [암묵지] 545nm = Green 대역 중심주파수 (fcen = (f_B+f_R)/2 ≈ 1/0.545)
+# [암묵지] fwidth = frequency * 2 → RGB 전대역 포함 보장 (경험값)
+frequency = 1/(0.545 * um_scale)
+fwidth    = frequency * 2
+src       = mp.GaussianSource(frequency=frequency, fwidth=fwidth)
+
+# [암묵지] Ex+Ey 동시 여기 = unpolarized (자연광 근사)
+source = [
+    mp.Source(src, component=mp.Ex, size=source_size, center=source_center),
+    mp.Source(src, component=mp.Ey, size=source_size, center=source_center),
+]
+
+# ─── 모니터링할 RGB 파장 ─────────────────────────────────────────────────────
+{% if wavelengths %}
+wavelengths   = np.array({{ wavelengths }})  # [B, G, R] μm
+{% else %}
+wavelengths   = np.array([0.45, 0.55, 0.65])  # [B, G, R] μm (기본값)
+{% endif %}
+frequencies_rgb = 1 / wavelengths
+
+# ─── Geometry ─────────────────────────────────────────────────────────────────
+# [암묵지] 소스 위쪽 SiO2: 실제 CIS 구조의 cover glass 재현
+geometry = [
+    mp.Block(
+        center=mp.Vector3(0, 0, round(Sz/2 - Lpml/2 - pml_2_src/2 - src_2_geo/2, 3)),
+        size=mp.Vector3(Sx, Sy, round(Lpml + pml_2_src + src_2_geo, 3)),
+        material=SiO2,   # cover glass (입사 medium)
+    ),
+    # Focal Layer: [암묵지] Air=높은 대비, SiO2=공정 현실 반영
+    mp.Block(
+        center=mp.Vector3(0, 0, z_fl),
+        size=mp.Vector3(Sx, Sy, FL_thickness),
+        material={{ focal_material }},
+    ),
+    # SiPD 영역: [암묵지] Si 대신 Air 사용 → flux 측정 가능
+    mp.Block(
+        center=mp.Vector3(0, 0, z_sipd),
+        size=mp.Vector3(Sx, Sy, round(mon_2_pml + Lpml, 3)),
+        material=Air,
+    ),
+]
+
+# ─── 설계 영역 (design_type별 분기) ──────────────────────────────────────────
+{% block design_region %}
+# TODO: 이 블록을 design_type별 템플릿으로 교체
+{% endblock %}
+
+# ─── MEEP Simulation 객체 ─────────────────────────────────────────────────────
+sim = mp.Simulation(
+    cell_size=cell_size,
+    boundary_layers=pml_layers,
+    geometry=geometry,
+    sources=source,
+    default_material=Air,
+    resolution=resolution,
+    # [암묵지] k_point=(0,0,0): Bayer 배열 주기 경계 조건 (절대 빠뜨리지 말 것!)
+    k_point=mp.Vector3(0, 0, 0),
+    # [암묵지] eps_averaging=False: discrete pillar의 sharp edge 보존
+    eps_averaging=False,
+    extra_materials=[SiO2, {{ material_name }}],
+)
+
+opt = mpa.OptimizationProblem(
+    simulation=sim,
+    objective_functions=[],
+    objective_arguments=[],
+    design_regions=[],
+    frequencies=frequencies_rgb,
+    decay_by=1e-3,
+    maximum_run_time=600,
+    minimum_run_time=10,
+)
+
+print(f"[CIS Setup] Sz={Sz}μm | Voxels≈{int(Sx*resolution)*int(Sy*resolution)*int(Sz*resolution):,}")
+print(f"[CIS Setup] z_src={z_src} | z_meta={z_meta} | z_mon={z_mon}")
+
+{% include 'reference_sim_and_efficiency.py.j2' %}

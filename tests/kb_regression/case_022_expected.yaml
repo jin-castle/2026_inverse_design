@@ -1,0 +1,14 @@
+case_id: case_022
+error_type: Timeout
+expected_retrieved_ids: []
+fix_type: parameter_tune
+min_results: 1
+min_top_score: 0.55
+must_contain_keywords:
+- timeout
+- seconds
+- exceeded
+- Execution
+query: 'Execution exceeded 60 seconds. 수치: stop_when_fields_decayed(50, ..., 1e-9).
+  PML=None으로 인한 경계 반사 및 무한 다중반사로 정상상태 미도달'
+source_db_id: 33

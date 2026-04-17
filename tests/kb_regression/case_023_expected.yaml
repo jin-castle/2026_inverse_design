@@ -1,0 +1,14 @@
+case_id: case_023
+error_type: Timeout
+expected_retrieved_ids: []
+fix_type: code_only
+min_results: 1
+min_top_score: 0.55
+must_contain_keywords:
+- timeout
+- seconds
+- exceeded
+- Execution
+query: 'Execution exceeded 60 seconds. 수치: resolution=25, PML=1.0μm, Δx≈40nm. 시뮬레이션
+  시간 초과로 인한 실행 불가'
+source_db_id: 35

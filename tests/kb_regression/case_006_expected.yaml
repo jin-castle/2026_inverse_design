@@ -1,0 +1,29 @@
+# 회귀 테스트 정답 파일 — sim_errors_v2 id=6
+# 자동 생성: gen_regression_cases.py
+
+# 검색 결과에 반드시 포함되어야 할 KB 항목 ID
+expected_retrieved_ids:
+  - "sim_v2_6"
+
+# 검색 결과에 절대 나와서는 안 될 항목 (현재 비어있음)
+must_not_retrieve: []
+
+# 위 ID 외에 나와도 괜찮은 관련 항목 (추가 허용)
+acceptable_also: []
+
+# 히트 판정에 사용할 키워드 (error_message / error_type 에서 추출)
+hit_keywords:
+  - "TypeError"
+  - "TypeError: MaterialGrid.__init__() got an unexpected keyword argument 'design_parameters'"
+
+# DB에서 복사한 검증 기준 (verification_criteria)
+verification_criteria:
+  T_min: null
+  T_max: null
+  R_max: null
+  TR_sum_min: null
+  TR_sum_max: null
+  FOM_threshold: null
+  gradient_ratio_target: null
+  no_exception: "True"
+  description: "MaterialGrid 생성 시 weights 인수가 정상적으로 인식되어 TypeError 예외가 발생하지 않아야 함"

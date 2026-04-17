@@ -1,0 +1,497 @@
+{
+  "version": "1.0",
+  "description": "CIS 재현 오차 패턴 DB — 실제 비교 분석에서 추출",
+  "last_updated": "2026-04-10",
+  "global_rules": [
+    {
+      "id": "GP-001",
+      "name": "stop_decay_mismatch",
+      "detect": "stop_when_dft_decayed 값이 원본과 다른 경우",
+      "symptom": "FL이 길거나(>=2μm) 셀이 클 때 효율값 불안정/과소평가",
+      "root_cause": "1e-6로 끊으면 FL=4μm 같은 긴 경로에서 field가 decay 완료 전 종료",
+      "fix": "params.json의 stop_decay 값을 원본 notebook 값으로 사용",
+      "verified_cases": [
+        "RGBIR2025: 1e-8",
+        "SMA2023: 1e-8",
+        "Pixel2022: 1e-8",
+        "SMA2023: FL=4.0μm → 1e-8 성공"
+      ]
+    },
+    {
+      "id": "GP-002",
+      "name": "source_duplication",
+      "detect": "mp.Source가 3개 이상인 경우 (Ex, Ey, Ex 중복)",
+      "symptom": "소스 에너지 과잉 → 효율 > 1 또는 이상 수치",
+      "root_cause": "참조 시뮬 source 교체 시 기존 source 배열에 추가되는 버그",
+      "fix": "source 리스트를 Ex+Ey 정확히 2개로 고정",
+      "verified_cases": [
+        "SMA2023",
+        "Simplest2023",
+        "RGBIR2025"
+      ]
+    },
+    {
+      "id": "GP-003",
+      "name": "ref_sim_geometry_wrong",
+      "detect": "참조 시뮬(geometry_1)이 완전 Air 단일 블록인 경우",
+      "symptom": "total_flux 기준이 달라져 효율 정규화 오차",
+      "root_cause": "원본에 따라 참조 시뮬도 SiO2 cover를 포함해야 하는 경우 있음",
+      "fix": "params.json의 ref_sim_type 참조: 'air'(Air 단일) vs 'with_cover'(SiO2 포함)",
+      "verified_cases": [
+        "Simplest2023: with_cover",
+        "SMA2023: air",
+        "RGBIR2025: air"
+      ]
+    }
+  ],
+  "paper_specific": {
+    "SMA2023": {
+      "paper_title": "Pixelated Bayer spectral router (sparse meta-atom, Chinese Optics Letters)",
+      "auto_discovered": true,
+      "discovery_date": "2026-04-10T21:49:58.032054",
+      "final_error_pct": 47.8,
+      "confirmed_errors": [],
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2"
+      }
+    },
+    "Simplest2023": {
+      "paper_title": "Simplest GA cylinder router (Nb2O5, Genetic Algorithm)",
+      "confirmed_errors": [
+        {
+          "id": "SI-001",
+          "name": "ref_sim_geometry_has_cover",
+          "description": "원본 참조 시뮬(geometry_1)에 SiO2 cover glass 포함. 생성은 Air 단일.",
+          "original": "geometry_1 = [mp.Block(..., material=SiO2)]  # SiO2 cover 포함",
+          "generated": "geometry_1 = [mp.Block(center=(0,0,0), size=full, material=Air)]",
+          "fix": "ref_sim_type: 'with_cover'",
+          "impact": "high — 참조 flux 기준이 달라져 정규화 오차"
+        },
+        {
+          "id": "SI-002",
+          "name": "source_triplet",
+          "description": "생성된 코드 source가 3개 (Ex,Ey,Ex). 원본은 Ex+Ey 2개.",
+          "fix": "source_count: 2",
+          "impact": "high"
+        },
+        {
+          "id": "SI-003",
+          "name": "extra_materials_missing_SiN",
+          "description": "원본 extra_materials=[SiO2,SiN,Nb2O5]. 생성=[SiO2,Nb2O5] SiN 누락.",
+          "fix": "extra_materials: ['SiO2', 'SiN', 'Nb2O5']",
+          "impact": "medium — MEEP 재료 인식 문제"
+        },
+        {
+          "id": "SI-004",
+          "name": "stop_decay_same",
+          "description": "원본 stop_decay=1e-6. 생성도 1e-6. 동일하므로 영향 없음.",
+          "impact": "none"
+        }
+      ],
+      "overrides": {
+        "stop_decay": "1e-6",
+        "ref_sim_type": "with_cover",
+        "cover_glass": true,
+        "source_count": 2,
+        "extra_materials": [
+          "SiO2",
+          "SiN",
+          "Nb2O5"
+        ]
+      }
+    },
+    "RGBIR2025": {
+      "paper_title": "RGB+IR spectral router (TiO2, ACS Photonics 2025)",
+      "confirmed_errors": [
+        {
+          "id": "RG-001",
+          "name": "stop_decay_1e6_vs_1e8",
+          "description": "원본 stop_when_dft_decayed=1e-8. 생성=1e-6. FL=4μm 미수렴.",
+          "fix": "stop_decay: '1e-8'",
+          "impact": "high"
+        },
+        {
+          "id": "RG-002",
+          "name": "ref_sim_geometry",
+          "description": "원본 참조 시뮬: Air 단일 블록. 생성과 동일.",
+          "fix": "ref_sim_type: 'air'",
+          "impact": "none"
+        },
+        {
+          "id": "RG-003",
+          "name": "source_triplet",
+          "description": "생성 source 3개. 원본 Ex+Ey 2개.",
+          "fix": "source_count: 2",
+          "impact": "high"
+        }
+      ],
+      "overrides": {
+        "stop_decay": "1e-8",
+        "ref_sim_type": "air",
+        "cover_glass": true,
+        "source_count": 2,
+        "extra_materials": [
+          "SiO2",
+          "TiO2"
+        ]
+      }
+    },
+    "Pixel2022": {
+      "confirmed_errors": [
+        {
+          "id": "PX-001",
+          "name": "stop_decay_mismatch",
+          "description": "원본 1e-8, 생성 1e-6. 하지만 오차 0.7%이므로 FL=2μm에서는 영향 미미.",
+          "impact": "low"
+        }
+      ],
+      "overrides": {
+        "stop_decay": "1e-8",
+        "ref_sim_type": "air",
+        "cover_glass": true,
+        "source_count": 2
+      }
+    },
+    "Freeform2022": {
+      "overrides": {
+        "stop_decay": "1e-4",
+        "cover_glass": true,
+        "ref_sim_type": "air",
+        "source_count": 1,
+        "sipd_material": "Air"
+      }
+    },
+    "Multilayer2022": {
+      "overrides": {
+        "stop_decay": "1e-3",
+        "cover_glass": true,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "Air"
+      }
+    },
+    "SingleLayer2022": {
+      "overrides": {
+        "stop_decay": "1e-3",
+        "cover_glass": true,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "Air"
+      }
+    },
+    "SMA2023_bayer_sma": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c00": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c01": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c02": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c03": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c04": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c05": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c06": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c07": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c08": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c09": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c10": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c11": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c12": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c13": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c14": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c15": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c16": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c17": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c18": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c19": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c20": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c21": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "sma"
+      }
+    },
+    "SMA2023_L2_c22": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c23": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c24": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c25": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c26": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c27": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c28": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    },
+    "SMA2023_L2_c29": {
+      "overrides": {
+        "stop_decay": "1e-8",
+        "cover_glass": false,
+        "ref_sim_type": "air",
+        "source_count": 2,
+        "sipd_material": "SiO2",
+        "bayer_config": "standard"
+      }
+    }
+  }
+}

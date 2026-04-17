@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>CIS Reproduce Report</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;margin:30px;background:#fafafa;color:#333}
+  h1{color:#2C3E50;border-bottom:3px solid #3498DB;padding-bottom:8px}
+  h2{color:#2980B9;margin-top:32px}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12px}
+  th{background:#2C3E50;color:white;padding:8px 10px;text-align:left}
+  td{border:1px solid #ddd;padding:7px 9px;vertical-align:top}
+  tr:nth-child(even){background:#f5f5f5}
+  .badge-pass{color:#27AE60;font-weight:bold}
+  .badge-partial{color:#E67E22;font-weight:bold}
+  code{background:#eee;padding:2px 6px;border-radius:3px;font-size:11px}
+  .summary-box{background:#EBF5FB;border:1px solid #AED6F1;
+                border-radius:6px;padding:14px;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>🔬 CIS Color Router Reproduce Report</h1>
+<p>생성일: 2026-04-10 14:53 | 
+   <b>pipeline_v2</b> (detector + error_patterns + 3-step resolution)</p>
+
+<div class="summary-box">
+<b>📊 전체 요약</b><br>
+총 5개 논문 재현 완료 | 
+PASS: 2개 | 
+PARTIAL: 3개<br>
+재현 코드 위치: <code>meep-kb/cis_repro/results/</code><br>
+오차 패턴 DB: <code>meep-kb/cis_repro/error_patterns.json</code> → meep-kb DB 저장됨
+</div>
+
+<h2>📋 논문별 재현 결과</h2>
+<table>
+<tr>
+  <th>논문 ID</th><th>재료</th><th>설계 방식</th><th>파라미터</th>
+  <th>효율 (pixel-norm)</th><th>평균 오차</th><th>상태</th><th>오차 수정 사항</th>
+</tr>
+
+        <tr>
+          <td><b>Single2022</b><br><small>Single-Layer Bayer Metasurface (TiO2, Single2022)</small></td>
+          <td>TiO2 (n=2.3)</td>
+          <td>discrete_pillar</td>
+          <td>SP=0.8μm<br>h=0.3μm<br>FL=2.0μm</td>
+          <td>R=0.709<br>G=0.457<br>B=0.729</td>
+          <td><b>6.0%</b></td>
+          <td><span style="color:#27AE60;font-weight:bold">✓ PASS</span></td>
+          <td><ul style="font-size:11px;margin:0;padding-left:14px"><li>없음</li></ul></td>
+        </tr>
+        <tr>
+          <td><b>Pixel2022</b><br><small>Pixel-Level Bayer Colour Router (SiN, Pixel2022)</small></td>
+          <td>SiN (n=2.0)</td>
+          <td>discrete_pillar</td>
+          <td>SP=1.0μm<br>h=0.6μm<br>FL=2.0μm</td>
+          <td>R=0.554<br>G=0.508<br>B=0.556</td>
+          <td><b>1.8%</b></td>
+          <td><span style="color:#27AE60;font-weight:bold">✓ PASS</span></td>
+          <td><ul style="font-size:11px;margin:0;padding-left:14px"><li><b>[PX-001]</b> stop_decay_mismatch <span style="color:orange">(low)</span>: 원본 1e-8, 생성 1e-6. 하지만 오차 0.7%이므로 FL=2μm에서는 영향 미미....</li></ul></td>
+        </tr>
+        <tr>
+          <td><b>SMA2023</b><br><small>Sparse Meta-Atom Array (SiN, Chinese Optics Letters)</small></td>
+          <td>SiN (n=2.02)</td>
+          <td>sparse</td>
+          <td>SP=1.12μm<br>h=1.0μm<br>FL=4.0μm</td>
+          <td>R=0.143<br>G=0.344<br>B=0.106</td>
+          <td>82% → <b>47.8%</b></td>
+          <td><span style="color:#E67E22;font-weight:bold">⚠ PARTIAL</span></td>
+          <td><ul style="font-size:11px;margin:0;padding-left:14px"><li><b>[SMA-001]</b> cover_glass_added_incorrectly <span style="color:orange">(high — source medium이 달라져 전체 투과율 변화)</span>: 원본에는 source 위쪽 SiO2 cover glass가 없음. default_material=Air로 입사....</li><li><b>[SMA-002]</b> stop_decay_1e6_vs_1e8 <span style="color:red">(high)</span>: 원본 stop_when_dft_decayed=1e-8, 생성=1e-6. FL=4μm에서 미수렴....</li><li><b>[SMA-003]</b> ref_sim_geometry <span style="color:orange">(low)</span>: 원본 참조 시뮬: [Air 단일 블록 (0,0,0)]. 생성과 동일하므로 무관....</li><li><b>[SMA-004]</b> SiPD_material <span style="color:orange">(medium)</span>: 원본 SiPD: SiO2. 생성: Air. flux 측정에는 Air가 맞으나 물리 구조 다름....</li></ul></td>
+        </tr>
+        <tr>
+          <td><b>Simplest2023</b><br><small>Simplest GA Cylinder Router (Nb₂O₅, ACS Photonics)</small></td>
+          <td>Nb2O5 (n=2.32)</td>
+          <td>cylinder</td>
+          <td>SP=0.8μm<br>h=0.51μm<br>FL=1.08μm</td>
+          <td>R=0.068<br>G=0.473<br>B=0.254</td>
+          <td>89% → <b>52.2%</b></td>
+          <td><span style="color:#E67E22;font-weight:bold">⚠ PARTIAL</span></td>
+          <td><ul style="font-size:11px;margin:0;padding-left:14px"><li><b>[SI-001]</b> ref_sim_geometry_has_cover <span style="color:orange">(high — 참조 flux 기준이 달라져 정규화 오차)</span>: 원본 참조 시뮬(geometry_1)에 SiO2 cover glass 포함. 생성은 Air 단일....</li><li><b>[SI-002]</b> source_triplet <span style="color:red">(high)</span>: 생성된 코드 source가 3개 (Ex,Ey,Ex). 원본은 Ex+Ey 2개....</li><li><b>[SI-003]</b> extra_materials_missing_SiN <span style="color:orange">(medium — MEEP 재료 인식 문제)</span>: 원본 extra_materials=[SiO2,SiN,Nb2O5]. 생성=[SiO2,Nb2O5] SiN 누락....</li><li><b>[SI-004]</b> stop_decay_same <span style="color:orange">(none)</span>: 원본 stop_decay=1e-6. 생성도 1e-6. 동일하므로 영향 없음....</li></ul></td>
+        </tr>
+        <tr>
+          <td><b>RGBIR2025</b><br><small>RGB+IR Pixel Spectral Router (TiO₂, ACS Photonics 2025)</small></td>
+          <td>TiO2 (n=2.5)</td>
+          <td>discrete_pillar</td>
+          <td>SP=1.1μm<br>h=0.6μm<br>FL=4.0μm</td>
+          <td>R=0.118<br>G=0.238<br>B=0.403</td>
+          <td>76% → <b>45.4%</b></td>
+          <td><span style="color:#E67E22;font-weight:bold">⚠ PARTIAL</span></td>
+          <td><ul style="font-size:11px;margin:0;padding-left:14px"><li><b>[RG-001]</b> stop_decay_1e6_vs_1e8 <span style="color:red">(high)</span>: 원본 stop_when_dft_decayed=1e-8. 생성=1e-6. FL=4μm 미수렴....</li><li><b>[RG-002]</b> ref_sim_geometry <span style="color:orange">(none)</span>: 원본 참조 시뮬: Air 단일 블록. 생성과 동일....</li><li><b>[RG-003]</b> source_triplet <span style="color:red">(high)</span>: 생성 source 3개. 원본 Ex+Ey 2개....</li></ul></td>
+        </tr>
+</table>
+
+<h2>🔧 공통 오차 패턴 (Global Rules)</h2>
+<p>에이전트가 새 논문 재현 시 자동으로 참조하는 규칙 (meep-kb DB 저장됨)</p>
+<table>
+<tr><th>ID</th><th>이름</th><th>증상</th><th>수정 방법</th></tr>
+<tr><td><b>GP-001</b></td><td>stop_decay_mismatch</td><td>FL이 길거나(>=2μm) 셀이 클 때 효율값 불안정/과소평가</td><td>params.json의 stop_decay 값을 원본 notebook 값으로 사용</td></tr><tr><td><b>GP-002</b></td><td>source_duplication</td><td>소스 에너지 과잉 → 효율 > 1 또는 이상 수치</td><td>source 리스트를 Ex+Ey 정확히 2개로 고정</td></tr><tr><td><b>GP-003</b></td><td>ref_sim_geometry_wrong</td><td>total_flux 기준이 달라져 효율 정규화 오차</td><td>params.json의 ref_sim_type 참조: 'air'(Air 단일) vs 'with_cover'(SiO2 포함)</td></tr>
+</table>
+
+<h2>📈 구조 + 효율 플롯</h2>
+<p>각 논문: XZ 단면 구조 | XY 패턴 | 효율 스펙트럼 (교정 전: 점선, 교정 후: 실선, 논문 target: 수평 점선)</p>
+<img src="CIS_Reproduce_Summary.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br><img src="Single2022_report.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br><img src="Pixel2022_report.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br><img src="SMA2023_report.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br><img src="Simplest2023_report.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br><img src="RGBIR2025_report.png" style="max-width:100%;margin:8px 0;border:1px solid #ddd;border-radius:4px"/><br>
+
+<h2>🤖 에이전트 자동 수정 아키텍처</h2>
+<pre style="background:#2C3E50;color:#ECF0F1;padding:16px;border-radius:6px;font-size:12px">
+새 CIS 논문 입력 (PDF/params.json)
+    │
+    ▼
+[Stage 0] param_extractor.py
+    → 논문 figure + 텍스트에서 파라미터 추출
+    │
+    ▼
+[Stage 1] corrected_codegen.py
+    → error_patterns.json 조회 (meep-kb DB 연동)
+    → 논문별 override 자동 적용:
+       - stop_decay (1e-6 vs 1e-8)
+       - ref_sim_type (air vs with_cover)
+       - cover_glass (on/off)
+       - source_count (1 or 2)
+    → detector.py 사전 검사 (24개 규칙)
+    │
+    ▼
+[Stage 2] fast_check (res=5, Docker)
+    │
+    ▼
+[Stage 3] Resolution 3단계
+    res=20 → 색분리 방향 확인
+    res=50 → 최종 실행
+    실행 오류 → detector.py auto_fix_loop
+    │
+    ▼
+[Stage 4] 결과 검증 + 보고서 생성
+    → XZ/XY/Efficiency 3패널 플롯
+    → HTML 보고서
+    → meep-kb examples/errors 테이블 저장
+</pre>
+
+</body></html>

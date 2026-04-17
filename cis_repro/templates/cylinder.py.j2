@@ -1,0 +1,48 @@
+"""
+[Design Region: cylinder]
+원형 기둥 meta-atom — GA 또는 파라메트릭 최적화 결과
+
+[암묵지]
+- Simplest 논문 (Nb2O5): R=470nm, G=370nm, B=210nm 원형 기둥
+- mp.Cylinder: radius=diameter/2, height=Layer_thickness
+- 위치: Bayer 4분면 중심 (±SP_size/2, ±SP_size/2)
+- 가장 단순한 CIS 설계 — 기둥 크기가 곧 설계 변수
+"""
+
+# ─── Cylinder meta-atom ─────────────────────────────────────────
+# [암묵지] cylinder 좌표: Bayer 사분면 중심에 정확히 위치
+_xc = [-SP_size/2, +SP_size/2]  # 두 X 위치
+_yc = [-SP_size/2, +SP_size/2]  # 두 Y 위치
+
+_cylinders = {{ cylinders }}
+# 형식: [{'label': 'R', 'diameter': 0.470, 'cx': -SP/2, 'cy': +SP/2}, ...]
+
+for _c in _cylinders:
+    _r = _c['diameter'] / 2
+    _cx = _c.get('cx', None)
+    _cy = _c.get('cy', None)
+
+    # 좌표 미지정이면 label에서 자동 계산
+    if _cx is None or _cy is None:
+        _pos_map = {
+            'R':  (_xc[0], _yc[1]),   # (-x, +y)
+            'Gr': (_xc[1], _yc[1]),   # (+x, +y) ← Simplest 논문 기준
+            'Gb': (_xc[0], _yc[0]),   # (-x, -y)
+            'B':  (_xc[1], _yc[0]),   # (+x, -y)
+        }
+        _cx, _cy = _pos_map.get(_c['label'], (0, 0))
+
+    # [암묵지] cylinder radius가 사분면 크기 절반을 넘지 않아야 함
+    assert _r <= SP_size/2 + 0.01, \
+        f"cylinder '{_c['label']}' 반지름({_r*1000:.0f}nm)이 서브픽셀({SP_size*500:.0f}nm) 초과"
+
+    geometry.append(mp.Cylinder(
+        radius=_r,
+        height=Layer_thickness,
+        center=mp.Vector3(round(_cx, 3), round(_cy, 3), z_meta),
+        material={{ material_name }},
+    ))
+
+print(f"[Cylinder] {len(_cylinders)}개 원형 기둥 추가")
+for _c in _cylinders:
+    print(f"  {_c['label']}: D={_c['diameter']*1000:.0f}nm")

@@ -1,0 +1,29 @@
+# 회귀 테스트 정답 파일 — sim_errors_v2 id=18
+# 자동 생성: gen_regression_cases.py
+
+# 검색 결과에 반드시 포함되어야 할 KB 항목 ID
+expected_retrieved_ids:
+  - "sim_v2_18"
+
+# 검색 결과에 절대 나와서는 안 될 항목 (현재 비어있음)
+must_not_retrieve: []
+
+# 위 ID 외에 나와도 괜찮은 관련 항목 (추가 허용)
+acceptable_also: []
+
+# 히트 판정에 사용할 키워드 (error_message / error_type 에서 추출)
+hit_keywords:
+  - "MPIDeadlockRisk"
+  - "[{'pattern': 'try-except 안에 MPI collective 연산 (sim.run, get_array 등)', 'risk': 'high', 'reason': '일부 rank에서 exception 발생"
+
+# DB에서 복사한 검증 기준 (verification_criteria)
+verification_criteria:
+  T_min: null
+  T_max: null
+  R_max: null
+  TR_sum_min: null
+  TR_sum_max: null
+  FOM_threshold: null
+  gradient_ratio_target: null
+  no_exception: "True"
+  description: "MPI 병렬 환경에서 모든 rank가 collective 연산 지점에 동시 진입하여 deadlock 없이 시뮬레이션이 정상 완료되어야 함"

@@ -1,0 +1,13 @@
+case_id: case_015
+error_type: NumericalError
+expected_retrieved_ids: []
+fix_type: structural
+min_results: 1
+min_top_score: 0.55
+must_contain_keywords:
+- numericalerror
+- invalid
+- SyntaxError
+- syntax
+query: 'SyntaxError: invalid syntax'
+source_db_id: 20

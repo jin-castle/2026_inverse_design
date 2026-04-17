@@ -1,0 +1,186 @@
+{
+  "total": 25,
+  "evaluated": 0,
+  "failed_api": 25,
+  "top1_hits": 0,
+  "top3_hits": 0,
+  "top1_hitrate": 0,
+  "top3_hitrate": 0,
+  "cases": [
+    {
+      "case": "case_001",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_002",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_003",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_004",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_005",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_006",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_007",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_008",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_009",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_010",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_011",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_012",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_013",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_014",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_015",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_016",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_017",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_018",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_019",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_020",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_021",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_022",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_023",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_024",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    },
+    {
+      "case": "case_025",
+      "top1_hit": false,
+      "top3_hit": false,
+      "status": "FAIL(no results)",
+      "results": []
+    }
+  ]
+}

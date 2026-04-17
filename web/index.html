@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEEP-KB · 광학 시뮬레이션 지식베이스</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2216%22 fill=%22%2306080f%22/><rect width=%22100%22 height=%22100%22 rx=%2216%22 fill=%22none%22 stroke=%22%2300D4FF%22 stroke-width=%228%22/><text y=%22.85em%22 font-size=%2262%22 font-family=%22monospace%22 text-anchor=%22middle%22 x=%2250%22 fill=%22%2300D4FF%22>M</text></svg>" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+</head>
+<body>
+  <div class="layout" id="layout">
+
+    <!-- ── 모바일 오버레이 ───────────────────────────────────── -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- ── 좌측 사이드바 ────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- 로고 -->
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="4.22" y1="4.22" x2="7.05" y2="7.05"/>
+            <line x1="16.95" y1="16.95" x2="19.78" y2="19.78"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <div class="logo-title">MEEP-KB</div>
+          <div class="logo-sub">광학 시뮬레이션 지식베이스</div>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll">
+
+        <!-- 서버 상태 -->
+        <div class="server-status" id="server-status">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="status-text" id="status-text">연결 확인 중...</span>
+        </div>
+
+        <!-- DB 현황 -->
+        <section class="sidebar-section">
+          <div class="section-title">지식베이스 현황</div>
+          <div class="stat-list">
+            <div class="stat-row">
+              <span class="stat-label">에러 케이스</span>
+              <span class="stat-value" id="stat-errors">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">코드 예제</span>
+              <span class="stat-value" id="stat-examples">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">공식 문서</span>
+              <span class="stat-value" id="stat-docs">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">그래프 노드</span>
+              <span class="stat-value" id="stat-nodes">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 페이지 네비게이션 -->
+        <section class="sidebar-section">
+          <div class="section-title">페이지</div>
+          <nav class="page-nav">
+            <a class="page-nav-item active" href="/" id="nav-search">
+              <span class="page-nav-icon">🔍</span>
+              <span>Search</span>
+            </a>
+            <a class="page-nav-item" href="/diagnose" id="nav-diagnose" onclick="return openPage('diagnose')">
+              <span class="page-nav-icon">🩺</span>
+              <span>Diagnose</span>
+            </a>
+            <!-- Dict 그룹 -->
+            <div class="page-nav-group">
+              <div class="page-nav-group-label" onclick="toggleDictNav()">
+                <span class="page-nav-icon">📚</span>
+                <span>Dict</span>
+                <span class="page-nav-chevron" id="dict-chevron">▾</span>
+              </div>
+              <div class="page-nav-sub" id="dict-subnav">
+                <a class="page-nav-sub-item" href="/dict#concepts" onclick="return openDict('concepts')">
+                  💡 Concepts
+                </a>
+                <a class="page-nav-sub-item" href="/dict#patterns" onclick="return openDict('patterns')">
+                  🔷 Patterns
+                </a>
+                <a class="page-nav-sub-item" href="/dict#notebooks" onclick="return openDict('notebooks')">
+                  📓 Notebooks
+                </a>
+                <a class="page-nav-sub-item" href="/dict#examples" onclick="return openDict('examples')">
+                  🔬 Examples
+                </a>
+                <a class="page-nav-sub-item" href="/dict#errors" onclick="return openDict('errors')">
+                  ⚠️ Errors
+                </a>
+              </div>
+            </div>
+          </nav>
+        </section>
+
+        <!-- 검색 방식 -->
+        <section class="sidebar-section">
+          <div class="section-title">검색 방식</div>
+          <div class="search-flow">
+            <div class="flow-step main-step">AI 의도 파악 → 자동 라우팅</div>
+            <div class="flow-methods">
+              <span class="flow-method graph">그래프</span>
+              <span class="flow-method vector">벡터</span>
+              <span class="flow-method keyword">키워드</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 예시 질문 -->
+        <section class="sidebar-section">
+          <div class="section-title">예시 질문</div>
+          <div class="example-list">
+            <button class="example-btn" data-query="adjoint 돌리다가 죽었어">
+              adjoint 돌리다가 죽었어
+            </button>
+            <button class="example-btn" data-query="EigenModeSource 사용법">
+              EigenModeSource 사용법
+            </button>
+            <button class="example-btn" data-query="PML이 뭐야">
+              PML이 뭐야
+            </button>
+            <button class="example-btn" data-query="시뮬레이션이 발산해">
+              시뮬레이션이 발산해
+            </button>
+            <button class="example-btn" data-query="adjoint gradient 예제">
+              adjoint gradient 예제
+            </button>
+          </div>
+        </section>
+
+        <!-- 외부 링크 -->
+        <section class="sidebar-section">
+          <div class="section-title">외부 링크</div>
+          <div class="link-list">
+            <a class="ext-link" href="https://meep.readthedocs.io" target="_blank">
+              MEEP 공식 문서
+            </a>
+            <a class="ext-link" href="https://mpb.readthedocs.io" target="_blank">
+              MPB 문서
+            </a>
+            <a class="ext-link" href="https://github.com/NanoComp/meep/issues" target="_blank">
+              GitHub Issues
+            </a>
+            <a class="ext-link" href="https://github.com/NanoComp/meep/discussions" target="_blank">
+              GitHub Discussions
+            </a>
+          </div>
+        </section>
+
+      </div><!-- /sidebar-scroll -->
+
+      <!-- 사이드바 하단 -->
+      <div class="sidebar-footer">
+        <button class="reset-btn" id="reset-btn" onclick="resetChat()">
+          대화 초기화
+        </button>
+      </div>
+
+    </aside><!-- /sidebar -->
+
+    <!-- ── 메인 채팅 영역 ────────────────────────────────────── -->
+    <main class="chat-area">
+
+      <!-- 채팅 헤더 -->
+      <div class="chat-header">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="메뉴">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="chat-header-text">
+          <div>
+            <div class="chat-header-title">MEEP-KB</div>
+            <div class="chat-header-sub">MEEP · MPB · Adjoint 통합 검색</div>
+          </div>
+        </div>
+        <div class="header-right">
+          <select id="n-select" class="n-select" title="결과 수">
+            <option value="3">3건</option>
+            <option value="5" selected>5건</option>
+            <option value="7">7건</option>
+            <option value="10">10건</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 탭 전환 -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-chat" onclick="switchTab('chat')">
+          KB Search
+        </button>
+        <button class="tab-btn" id="tab-diagnose" onclick="switchTab('diagnose')">
+          Diagnose
+        </button>
+        <button class="tab-btn" id="tab-dict" onclick="switchTab('dict')">
+          Dict
+        </button>
+      </div>
+
+      <!-- ── 채팅 탭 ── -->
+      <div id="panel-chat" class="tab-panel">
+
+        <!-- 메시지 목록 -->
+        <div class="messages" id="messages">
+          <!-- 환영 카드 -->
+          <div class="welcome-card" id="welcome-card">
+            <h2 class="welcome-title">MEEP 지식베이스</h2>
+            <p class="welcome-desc">
+              에러 디버깅, 코드 예제, 개념 설명 등<br>
+              한국어 · 영어 모두 지원합니다.
+            </p>
+            <div class="welcome-tags">
+              <span class="welcome-tag tag-error">에러 디버깅</span>
+              <span class="welcome-tag tag-example">코드 예제</span>
+              <span class="welcome-tag tag-concept">개념 탐색</span>
+              <span class="welcome-tag tag-doc">문서 검색</span>
+            </div>
+            <div class="welcome-examples">
+              <button class="welcome-example-btn" data-query="adjoint 돌리다가 죽었어">adjoint 돌리다가 죽었어</button>
+              <button class="welcome-example-btn" data-query="EigenModeSource 사용법">EigenModeSource 사용법</button>
+              <button class="welcome-example-btn" data-query="PML이 뭐야">PML이 뭐야</button>
+              <button class="welcome-example-btn" data-query="시뮬레이션이 발산해">시뮬레이션이 발산해</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 입력창 -->
+        <div class="input-area">
+          <div class="input-wrapper" id="input-wrapper">
+            <textarea
+              id="query-input"
+              class="query-input"
+              placeholder="MEEP 관련 질문을 입력하세요..."
+              rows="1"
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+            <button id="send-btn" class="send-btn" onclick="sendQuery()" title="전송 (Enter)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+          <div class="input-tip">
+            <kbd>Enter</kbd> 전송 &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> 줄바꿈
+          </div>
+        </div>
+
+      </div><!-- /panel-chat -->
+
+      <!-- ── 코드 진단 탭 ── -->
+      <div id="panel-diagnose" class="tab-panel" style="display:none;">
+        <div class="diagnose-panel">
+
+          <div class="diagnose-header">
+            <div class="diagnose-title">코드 · 에러 진단</div>
+            <div class="diagnose-desc">
+              MEEP 코드와 에러 메시지를 붙여넣으면 <strong>meep-kb DB 기반</strong>으로
+              수정 방법을 제안합니다. DB에서 해결 못하면 LLM이 보조합니다.
+            </div>
+          </div>
+
+          <div class="diagnose-inputs">
+            <div class="diag-input-group">
+              <label class="diag-label">
+                MEEP 코드 <span class="diag-label-hint">— 문제가 되는 코드 붙여넣기</span>
+              </label>
+              <textarea
+                id="diag-code"
+                class="diag-textarea diag-code"
+                placeholder="import meep as mp
+
+sim = mp.Simulation(
+    cell_size=mp.Vector3(10, 10, 0),
+    ...
+)"
+                spellcheck="false"
+              ></textarea>
+            </div>
+
+            <div class="diag-input-group">
+              <label class="diag-label">
+                에러 메시지 <span class="diag-label-hint">— 전체 traceback 포함</span>
+              </label>
+              <textarea
+                id="diag-error"
+                class="diag-textarea diag-error"
+                placeholder="Traceback (most recent call last):
+  File &quot;simulation.py&quot;, line 42, in &lt;module&gt;
+    opt.update_design(...)
+AttributeError: 'OptimizationProblem' object has no attribute 'update_design'
+..."
+                spellcheck="false"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="diagnose-actions">
+            <button class="diag-submit-btn" id="diag-submit" onclick="runDiagnose()">
+              진단 시작
+            </button>
+            <button class="diag-run-btn" id="diag-run-btn" onclick="runFixAndVerify()"
+                    title="수정 코드 생성 + Docker 실행 검증 (최대 60초)">
+              ⚡ 수정 + 실행 검증
+            </button>
+            <button class="diag-clear-btn" onclick="clearDiagnose()">
+              초기화
+            </button>
+          </div>
+
+          <!-- 진단 결과 -->
+          <div id="diag-result" class="diag-result" style="display:none;"></div>
+
+          <!-- 실행 검증 결과 -->
+          <div id="diag-run-result" class="diag-run-result" style="display:none;"></div>
+
+          <!-- 예시 버튼 -->
+          <div class="diag-examples">
+            <div class="diag-examples-title">자주 나오는 에러</div>
+            <div class="diag-example-btns">
+              <button class="diag-ex-btn" onclick="fillDiagExample('adjoint')">
+                adjoint update_design 오류
+              </button>
+              <button class="diag-ex-btn" onclick="fillDiagExample('diverge')">
+                시뮬레이션 발산 (NaN)
+              </button>
+              <button class="diag-ex-btn" onclick="fillDiagExample('eigenmode')">
+                EigenModeSource 오류
+              </button>
+              <button class="diag-ex-btn" onclick="fillDiagExample('src_in_pml')">
+                소스 PML 내부 배치
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /panel-diagnose -->
+
+      <!-- ── Dictionary 탭 ── -->
+      <div id="panel-dict" class="tab-panel" style="display:none; flex:1; overflow:hidden;">
+        <iframe
+          id="dict-frame"
+          src="about:blank"
+          style="width:100%; height:100%; border:none; flex:1;"
+          title="MEEP-KB Dictionary"
+        ></iframe>
+      </div><!-- /panel-dict -->
+
+    </main>
+  </div><!-- /layout -->
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+"""
+[참조 시뮬레이션 + 효율 계산]
+[암묵지] 2-단계 실행:
+  시뮬1: 빈 공간 → total_flux 기준값 + 반사 기준 확보
+  시뮬2: 실제 구조 → load_minus_flux로 순수 반사만 분리
+"""
+
+# ─── 광대역 스펙트럼 파라미터 (RGB 전 범위) ──────────────────────────────────
+fcen  = (1/(0.350 * um_scale) + 1/(0.800 * um_scale)) / 2
+df    = 1/(0.350 * um_scale) - 1/(0.800 * um_scale)
+nfreq = 400
+
+# 참조 시뮬에서도 동일 source 사용 (일관성!)
+src_broad = mp.GaussianSource(frequency=fcen, fwidth=df)
+source_ref = [mp.Source(src_broad, component=mp.Ex, size=source_size, center=source_center)]
+
+# ─── STEP 1: 참조 시뮬레이션 (빈 공간) ───────────────────────────────────────
+# [암묵지] geometry_ref: source 쪽만 Air. 메타서피스, focal layer 없음.
+geometry_ref = [
+    mp.Block(center=mp.Vector3(0,0,0), size=mp.Vector3(Sx,Sy,Sz), material=Air),
+]
+
+sim_ref = mp.Simulation(
+    cell_size=cell_size,
+    boundary_layers=pml_layers,
+    geometry=geometry_ref,
+    sources=source_ref,
+    default_material=Air,
+    resolution=resolution,
+    k_point=mp.Vector3(0,0,0),    # [암묵지] 참조 시뮬도 동일 경계조건
+    extra_materials=[SiO2],
+)
+
+# 반사 모니터 (소스 바로 위): 입사파 포함한 "전체 flux" 측정
+refl_fr = mp.FluxRegion(
+    center=mp.Vector3(0, 0, z_refl),
+    size=mp.Vector3(Sx, Sy, 0),
+)
+# 전송 모니터 (검출기 위치): 총 투과 flux
+tran_fr = mp.FluxRegion(
+    center=mp.Vector3(0, 0, z_mon),
+    size=mp.Vector3(Sx, Sy, 0),
+)
+
+refl_ref   = sim_ref.add_flux(fcen, df, nfreq, refl_fr)
+tran_total_ref = sim_ref.add_flux(fcen, df, nfreq, tran_fr)
+
+print("[Ref Sim] 참조 시뮬레이션 실행 중...")
+t0 = time.time()
+sim_ref.run(until_after_sources=mp.stop_when_dft_decayed(1e-6, 0))
+print(f"[Ref Sim] 완료 ({time.time()-t0:.1f}초)")
+
+# [암묵지] 이 두 값이 정규화의 기준이 됨
+straight_refl_data = sim_ref.get_flux_data(refl_ref)   # 반사 기준값
+total_flux         = mp.get_fluxes(tran_total_ref)     # 총 입사 flux
+flux_freqs         = mp.get_flux_freqs(tran_total_ref)
+
+# ─── STEP 2: 실제 구조 시뮬레이션 ────────────────────────────────────────────
+sim.change_sources(source_ref)   # 광대역 소스로 교체
+
+refl_main  = sim.add_flux(fcen, df, nfreq, refl_fr)
+tran_main  = sim.add_flux(fcen, df, nfreq, tran_fr)
+
+# [암묵지] 전체 픽셀 면적 모니터 (pixel-normalized 효율 분모)
+tran_pixel = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(
+    center=mp.Vector3(0, 0, z_mon),
+    size=mp.Vector3(design_region_x, design_region_y, 0),
+))
+
+# [암묵지] load_minus_flux: 수학적으로 실제반사 = 전체반사 - 입사(기준)
+# 빈 공간 데이터를 빼서 메타서피스에 의한 반사만 남김
+sim.load_minus_flux_data(refl_main, straight_refl_data)
+
+# ─── Bayer 4분면 모니터 ────────────────────────────────────────────────────────
+# [암묵지] 표준 좌표계: R(-x,-y), Gr(-x,+y), B(+x,+y), Gb(+x,-y)
+dx, dy = design_region_x, design_region_y
+q_size = mp.Vector3(dx/2, dy/2, 0)
+
+tran_r  = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(
+    center=mp.Vector3(-dx/4, -dy/4, z_mon), size=q_size))
+tran_gr = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(
+    center=mp.Vector3(-dx/4, +dy/4, z_mon), size=q_size))
+tran_b  = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(
+    center=mp.Vector3(+dx/4, +dy/4, z_mon), size=q_size))
+tran_gb = sim.add_flux(fcen, df, nfreq, mp.FluxRegion(
+    center=mp.Vector3(+dx/4, -dy/4, z_mon), size=q_size))
+
+# ─── DFT Field Monitor (RGB 파장별 field map) ────────────────────────────────
+dft_center = mp.Vector3(0, 0, round(-Sz/2 + Lpml + mon_2_pml, 3))
+dft_size   = mp.Vector3(dx, dy, 0)
+for _fcen_wl, _label in zip([wavelengths[0], wavelengths[1], wavelengths[2]], ['B', 'G', 'R']):
+    for _comp in [mp.Ex, mp.Ey, mp.Ez]:
+        sim.add_dft_fields([_comp], 1/_fcen_wl, 0, 1,
+                            center=dft_center, size=dft_size, yee_grid=True)
+
+print("[Main Sim] 실제 구조 시뮬레이션 실행 중...")
+t0 = time.time()
+sim.run(until_after_sources=mp.stop_when_dft_decayed(1e-6, 0))
+print(f"[Main Sim] 완료 ({time.time()-t0:.1f}초)")
+
+# ─── 효율 계산 ────────────────────────────────────────────────────────────────
+refl_flux    = mp.get_fluxes(refl_main)
+tran_flux    = mp.get_fluxes(tran_main)
+tran_flux_p  = mp.get_fluxes(tran_pixel)
+red_flux     = mp.get_fluxes(tran_r)
+greenr_flux  = mp.get_fluxes(tran_gr)
+blue_flux    = mp.get_fluxes(tran_b)
+greenb_flux  = mp.get_fluxes(tran_gb)
+
+wl_arr = np.array([1/(flux_freqs[d]*um_scale) for d in range(nfreq)])
+
+# Pixel-normalized (논문 표기 기준, 분모=픽셀 도달 flux)
+Tr  = np.array([red_flux[d]    / tran_flux_p[d] for d in range(nfreq)])
+# [암묵지] Green = Gr + Gb (Bayer G 픽셀 2개)
+Tg  = np.array([(greenr_flux[d]+greenb_flux[d]) / tran_flux_p[d] for d in range(nfreq)])
+Tb  = np.array([blue_flux[d]   / tran_flux_p[d] for d in range(nfreq)])
+
+# Total-normalized (분모=총 입사 flux)
+Trt = np.array([red_flux[d]    / total_flux[d] for d in range(nfreq)])
+Tgt = np.array([(greenr_flux[d]+greenb_flux[d]) / total_flux[d] for d in range(nfreq)])
+Tbt = np.array([blue_flux[d]   / total_flux[d] for d in range(nfreq)])
+
+# ─── 결과 저장 ────────────────────────────────────────────────────────────────
+results_dir = "{{ results_dir }}"
+os.makedirs(results_dir, exist_ok=True)
+paper_id    = "{{ paper_id }}"
+
+# 효율 스펙트럼 그래프
+if mp.am_master():   # [암묵지] MPI 병렬 시 master 프로세스만 출력
+    fig, ax = plt.subplots(figsize=(7, 5), dpi=150)
+    ax.plot(wl_arr, Tr,  'r',   label='R (pixel-norm)')
+    ax.plot(wl_arr, Tg,  'g',   label='G (pixel-norm)')
+    ax.plot(wl_arr, Tb,  'b',   label='B (pixel-norm)')
+    ax.plot(wl_arr, Trt, 'r--', label='R (total-norm)')
+    ax.plot(wl_arr, Tgt, 'g--', label='G (total-norm)')
+    ax.plot(wl_arr, Tbt, 'b--', label='B (total-norm)')
+    ax.fill_between([0.38, 0.48], 0, 1, alpha=0.15, color='blue')
+    ax.fill_between([0.48, 0.58], 0, 1, alpha=0.15, color='green')
+    ax.fill_between([0.58, 0.78], 0, 1, alpha=0.15, color='red')
+    ax.set_xlim([0.38, 0.78])
+    ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Wavelength (μm)')
+    ax.set_ylabel('Efficiency')
+    ax.set_title(f'{{ paper_title }} — Color Router Efficiency')
+    ax.legend(loc='upper left', fontsize=8)
+    ax.tick_params(direction='in')
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, f'{paper_id}_efficiency.png'))
+    plt.close()
+    print(f"[Result] Efficiency plot saved → {results_dir}/{paper_id}_efficiency.png")
+
+    # 수치 결과 JSON 저장
+    # 논문 target 파장에서의 효율 추출
+    def _eff_at(wl_target, T_arr):
+        idx = np.argmin(np.abs(wl_arr - wl_target))
+        return float(T_arr[idx])
+
+    result_json = {
+        "paper_id": paper_id,
+        "paper_title": "{{ paper_title }}",
+        "params": {
+            "material": "{{ material_name }}", "n": {{ n_material }},
+            "SP_size": {{ sp_size }}, "Layer_thickness": {{ layer_thickness }},
+            "FL_thickness": {{ fl_thickness }}, "resolution": {{ resolution }},
+        },
+        "efficiency_pixel_norm": {
+            "R_at_650nm": _eff_at(0.65, Tr),
+            "G_at_550nm": _eff_at(0.55, Tg),
+            "B_at_450nm": _eff_at(0.45, Tb),
+        },
+        "efficiency_total_norm": {
+            "R_at_650nm": _eff_at(0.65, Trt),
+            "G_at_550nm": _eff_at(0.55, Tgt),
+            "B_at_450nm": _eff_at(0.45, Tbt),
+        },
+    }
+    with open(os.path.join(results_dir, f'{paper_id}_results.json'), 'w') as f:
+        json.dump(result_json, f, indent=2, ensure_ascii=False)
+    print(f"[Result] R={result_json['efficiency_pixel_norm']['R_at_650nm']:.3f} "
+          f"G={result_json['efficiency_pixel_norm']['G_at_550nm']:.3f} "
+          f"B={result_json['efficiency_pixel_norm']['B_at_450nm']:.3f}")

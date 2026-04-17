@@ -1,0 +1,29 @@
+# 회귀 테스트 정답 파일 — sim_errors_v2 id=4
+# 자동 생성: gen_regression_cases.py
+
+# 검색 결과에 반드시 포함되어야 할 KB 항목 ID
+expected_retrieved_ids:
+  - "sim_v2_4"
+
+# 검색 결과에 절대 나와서는 안 될 항목 (현재 비어있음)
+must_not_retrieve: []
+
+# 위 ID 외에 나와도 괜찮은 관련 항목 (추가 허용)
+acceptable_also: []
+
+# 히트 판정에 사용할 키워드 (error_message / error_type 에서 추출)
+hit_keywords:
+  - "Harminv"
+  - "AssertionError:"
+
+# DB에서 복사한 검증 기준 (verification_criteria)
+verification_criteria:
+  T_min: null
+  T_max: null
+  R_max: null
+  TR_sum_min: null
+  TR_sum_max: null
+  FOM_threshold: null
+  gradient_ratio_target: null
+  no_exception: "True"
+  description: "Harminv 알고리즘이 예외 없이 실행 완료되고 공진 주파수 분석이 수치적으로 안정적으로 수렴"

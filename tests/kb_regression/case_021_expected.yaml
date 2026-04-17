@@ -1,0 +1,29 @@
+# 회귀 테스트 정답 파일 — sim_errors_v2 id=21
+# 자동 생성: gen_regression_cases.py
+
+# 검색 결과에 반드시 포함되어야 할 KB 항목 ID
+expected_retrieved_ids:
+  - "sim_v2_21"
+
+# 검색 결과에 절대 나와서는 안 될 항목 (현재 비어있음)
+must_not_retrieve: []
+
+# 위 ID 외에 나와도 괜찮은 관련 항목 (추가 허용)
+acceptable_also: []
+
+# 히트 판정에 사용할 키워드 (error_message / error_type 에서 추출)
+hit_keywords:
+  - "Timeout"
+  - "Execution exceeded 60 seconds"
+
+# DB에서 복사한 검증 기준 (verification_criteria)
+verification_criteria:
+  T_min: null
+  T_max: null
+  R_max: null
+  TR_sum_min: "0.95"
+  TR_sum_max: "1.05"
+  FOM_threshold: null
+  gradient_ratio_target: null
+  no_exception: "True"
+  description: "resolution과 수렴 조건 완화로 32 코어에서 타임아웃 없이 실행 완료되고 에너지 보존 법칙(T+R≈1)이 ±5% 이내로 만족되어야 합니다."

@@ -1,0 +1,48 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.log
+.DS_Store
+
+# 로컬 전용
+install_gh.sh
+start_server.sh
+docker-compose.yml
+
+# 임시/테스트 파일
+test_live*.py
+agent/test_*.py
+agent/debug_*.py
+
+# 크롤러 스크립트 (배포 불필요)
+crawlers/
+
+# 보고서
+reports/
+
+# 그래프 v1 (v2만 사용)
+db/knowledge_graph.pkl
+
+db/knowledge.db
+db/knowledge_sync.db
+db/chroma/
+db/results/
+*.sqlite3
+*.bin
+__pycache__/
+*.pyc
+.env
+*.db
+*_backup_*.db
+main.py.bak
+.tmp/
+tmp_*
+check_*.py
+verify_*.py
+fix_*.txt
+*_result.txt
+*_out.txt
+sym_*.txt
+vfix_status.txt
