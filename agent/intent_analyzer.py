@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
 Intent Analyzer - 사용자 쿼리의 의도를 LLM으로 파악
-ANTHROPIC_API_KEY 없으면 heuristic fallback 자동 사용
+LLM 자격증명이 없으면 heuristic fallback 자동 사용
 
 v2: pipeline_category / pipeline_stage 감지 추가
 """
 
-import os, re, json
+import os, re, json, sys
+from pathlib import Path
 
-ANTHROPIC_API_KEY = os.environ.get(
-    "ANTHROPIC_API_KEY",
-    "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"
-)
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from llm_client import generate_text, llm_available
 
 # ── 의도 유형 정의 ───────────────────────────────────────────────────────────
 INTENT_TYPES = {
@@ -253,10 +255,8 @@ def heuristic_intent(query: str) -> dict:
 
 
 def llm_intent(query: str) -> dict:
-    """Claude API로 의도 분석"""
+    """LLM으로 의도 분석 (OpenAI GPT-5.4 우선)"""
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         prompt = f"""사용자가 MEEP(MIT 전자기 시뮬레이터) 지식베이스에 다음 질문을 했습니다.
 
 질문: "{query}"
@@ -277,17 +277,20 @@ def llm_intent(query: str) -> dict:
 - doc_lookup: 문서/레퍼런스 (예: "파라미터", "API 문서", "옵션")
 - unknown: 위 어디에도 해당 없음"""
 
-        msg = client.messages.create(
-            model="claude-haiku-4-5",
+        response = generate_text(
+            prompt,
+            preferred_openai_model=os.environ.get("MEEP_KB_INTENT_MODEL", "gpt-5.4"),
+            anthropic_fallback_model="claude-haiku-4-5",
             max_tokens=256,
-            messages=[{"role": "user", "content": prompt}]
         )
-        raw = msg.content[0].text.strip()
+        raw = response["text"].strip()
         if raw.startswith("```"):
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
             raw = re.sub(r"\s*```$", "", raw.strip())
         data = json.loads(raw.strip())
         data["method"] = "llm"
+        data["llm_provider"] = response.get("provider")
+        data["llm_model"] = response.get("model")
         return data
     except Exception:
         return None
@@ -301,7 +304,7 @@ def analyze(query: str, use_llm: bool = True, verbose: bool = False) -> dict:
     """
     # 기존 intent 분석
     result = None
-    if use_llm and ANTHROPIC_API_KEY:
+    if use_llm and llm_available():
         result = llm_intent(query)
     if result is None:
         result = heuristic_intent(query)

@@ -14,12 +14,27 @@ v2: pipeline_category / pipeline_stage 컨텍스트 + next step preview 추가
 
 import os
 import sqlite3
+import sys
+from pathlib import Path
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from llm_client import generate_text
+
 FEEDBACK_DB: str = ""   # startup에서 주입
 
-# 모든 의도에 Sonnet 사용
+# OpenAI GPT-5.4 우선, Anthropic은 fallback
 INTENT_MODEL_MAP = {
+    "error_debug":  "gpt-5.4",
+    "concept_map":  "gpt-5.4",
+    "code_example": "gpt-5.4",
+    "doc_lookup":   "gpt-5.4",
+    "unknown":      "gpt-5.4",
+}
+
+ANTHROPIC_FALLBACK_MODEL_MAP = {
     "error_debug":  "claude-sonnet-4-5",
     "concept_map":  "claude-sonnet-4-5",
     "code_example": "claude-sonnet-4-5",
@@ -365,7 +380,8 @@ def generate(query: str, intent: dict, db_results: list) -> dict:
     has_db          = bool(db_results)
 
     # ── 의도별 모델 선택 ───────────────────────────────────────────────────
-    model = INTENT_MODEL_MAP.get(intent_type, "claude-sonnet-4-5")
+    model = INTENT_MODEL_MAP.get(intent_type, "gpt-5.4")
+    anthropic_fallback_model = ANTHROPIC_FALLBACK_MODEL_MAP.get(intent_type, "claude-sonnet-4-5")
 
     # ── 파이프라인 컨텍스트 블록 (system prompt 보조) ─────────────────────
     pipeline_ctx = ""
@@ -475,18 +491,16 @@ DB에 관련 정보가 없다는 것을 명확히 알리고,
 불확실한 내용은 "(확인 필요)" 표시를 하세요.
 """
 
-    # ── Claude API 호출 ────────────────────────────────────────────────────
+    # ── LLM 호출 (OpenAI GPT-5.4 우선) ──────────────────────────────────────
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
-        msg = client.messages.create(
-            model=model,
+        llm_response = generate_text(
+            user_prompt,
+            system_prompt=system_prompt,
+            preferred_openai_model=model,
+            anthropic_fallback_model=anthropic_fallback_model,
             max_tokens=2500,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
         )
-        answer_body = msg.content[0].text.strip()
+        answer_body = llm_response["text"].strip()
 
     except Exception as e:
         answer_body = (
